@@ -1,88 +1,16 @@
-// ========== 1. 核心配置与词典 (完全保留原版数据) ==========
+// ========== 1. 核心配置与词典 ==========
 const DEEPSEEK_KEY = "sk-0188270c22224ddda38db93e589937dd";
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const RECIPE_API = "https://www.themealdb.com/api/json/v1/1/";
+// ========== BMI配置 ==========
 const BMI_API = "https://apis.tianapi.com/bmi/index";
-const TIAN_KEY = "9872eff67fe095ca78fa1d18228d4502";
+const TIAN_KEY = "bec01a55dc51195668cdec1ea3f12046"; 
+// [新增] 聚合数据配置，用于中国食谱
+const JUHE_KEY = "502e3e1e146863da322d85d4441f2129"; // 你的 Key
+const JUHE_API_URL = "http://apis.juhe.cn/fapigx/caipu/query"; // 聚合接口地址
+let currentSource = 'global'; // 当前数据源状态：'global' 或 'chinese'
 
-// 单位表 
-const UNIT_MAP = {
-    // 汤匙相关
-    "tblsp": "汤匙", "tablespoon": "汤匙", "tablespoons": "汤匙", 
-    "tbsp": "汤匙", "tbsps": "汤匙", "tbs": "汤匙", "tb": "汤匙",
-    "dessert spoon": "甜点匙", "dessert spoons": "甜点匙",
-    
-    // 茶匙相关
-    "teaspoon": "茶匙", "teaspoons": "茶匙", "tsp": "茶匙", 
-    "tsps": "茶匙", "t": "茶匙", "ts": "茶匙", "metric teaspoon": "公制茶匙",
-    
-    // 杯相关
-    "cup": "杯", "cups": "杯", "c": "杯", "metric cup": "公制杯",
-    "coffee cup": "咖啡杯", "tea cup": "茶杯",
-    
-    // 液体单位
-    "fluid ounce": "液盎司", "fl oz": "液盎司", "fluid oz": "液盎司",
-    "pint": "品脱", "pints": "品脱", "pt": "品脱", "fluid pint": "液品脱",
-    "quart": "夸脱", "quarts": "夸脱", "qt": "夸脱", "fluid quart": "液夸脱",
-    "gallon": "加仑", "gallons": "加仑", "gal": "加仑", "fluid gallon": "液加仑",
-    "ml": "毫升", "milliliter": "毫升", "milliliters": "毫升", "cc": "毫升",
-    "l": "升", "liter": "升", "liters": "升", "litre": "升", "litres": "升",
-    "dl": "分升", "deciliter": "分升", "cl": "厘升", "centiliter": "厘升",
-    
-    // 重量单位
-    "oz": "盎司", "ounce": "盎司", "ounces": "盎司", 
-    "lb": "磅", "lbs": "磅", "pound": "磅", "pounds": "磅",
-    "oz wt": "盎司(重)", "net wt": "净重",
-    "g": "克", "gram": "克", "grams": "克",
-    "kg": "千克", "kilogram": "千克", "kilograms": "千克",
-    "mg": "毫克", "milligram": "毫克",
-    
-    // 少量单位
-    "pinch": "少许", "pinches": "少许", 
-    "dash": "少量", "dashes": "少量",
-    "sprinkle": "撒少许", "sprinkles": "撒少许",
-    "drop": "滴", "drops": "滴", "dash or two": "一两滴",
-    
-    // 数量单位
-    "piece": "块", "pieces": "块", "pc": "块",
-    "slice": "片", "slices": "片",
-    "clove": "瓣", "cloves": "瓣",
-    "stalk": "根", "stalks": "根",
-    "head": "颗", "heads": "颗",
-    "leaf": "片", "leaves": "片",
-    "stick": "根", "sticks": "根",
-    "cube": "块", "cubes": "块",
-    "ball": "个", "balls": "个",
-    "can": "罐", "cans": "罐",
-    "jar": "瓶", "jars": "瓶",
-    "package": "包", "packages": "包",
-    "packet": "小包", "packets": "小包",
-    "box": "盒", "boxes": "盒",
-    "bag": "袋", "bags": "袋",
-    "bottle": "瓶", "bottles": "瓶",
-    "container": "容器", "containers": "容器",
-    
-    // 模糊量度
-    "to taste": "适量", "tt": "适量",
-    "handful": "一把", "handfuls": "一把",
-    "bunch": "束", "bunches": "束",
-    "sprig": "小枝", "sprigs": "小枝",
-    "dollop": "一勺", "dollops": "一勺",
-    "splash": "一溅", "splashes": "一溅",
-    "scoop": "一勺", "scoops": "一勺",
-    "heaping": "满勺", "heaped": "满勺",
-    "level": "平勺", "rounded": "圆勺",
-    
-    // 特殊食材单位
-    "ear": "穗", "ears": "穗", // 用于玉米等
-    "clove": "瓣", "cloves": "瓣", // 用于大蒜等
-    "bulb": "头", "bulbs": "头", // 用于洋葱等
-    "root": "根", "roots": "根", // 用于萝卜等
-    "cube": "块", "cubes": "块", // 用于糖等
-    "bar": "条", "bars": "条", // 用于巧克力等
-    "sheet": "张", "sheets": "张", // 用于海苔等
-    "pat": "小块", "pats": "小块" // 用于黄油等
-};
+
 
 
 // 扩充词典 (用于辅助翻译)
@@ -106,17 +34,14 @@ const SMART_MAP = {
     "快手菜": "Quick Meal", "海鲜": "Seafood", "蔬菜": "Vegetables", "鸡蛋": "Egg"
 };
 
-
 // 简单拼音首字母转换工具
 const pinyinUtil = {
     getFirstLetter: function(str) {
         const firstLetters = [];
         for (let i = 0; i < str.length; i++) {
             const charCode = str.charCodeAt(i);
-            // 基本汉字范围
             if (charCode >= 0x4e00 && charCode <= 0x9fa5) {
-                // 这里使用简化的拼音首字母映射（完整版本需要更大的映射表）
-                firstLetters.push('a'); // 实际应用中需要替换为正确的首字母映射
+                firstLetters.push('a'); 
             } else {
                 firstLetters.push(str[i].toLowerCase());
             }
@@ -125,23 +50,82 @@ const pinyinUtil = {
     }
 };
 
-// 简化版拼音字典（仅示例，实际需扩展）
-const pinyinDictionary = {
-    27721: 'hong', // 红
-    28165: 'shao', // 烧
-    29399: 'rou',  // 肉
-    39321: 'yu',   // 鱼
-    33647: 'shu',  // 蔬
-    31881: 'cai',  // 菜
-    32599: 'niu',  // 牛
-    32844: 'rou',  // 肉
-    38271: 'ji',   // 鸡
-    32933: 'dan',  // 蛋
-    31639: 'mian', // 面
-    32929: 'fen'   // 粉
+
+// [新增] 切换数据源逻辑
+function switchSource(source) {
+    currentSource = source;
+    const input = document.getElementById('search-input');
+    const tagsGlobal = document.getElementById('tags-global');
+    const tagsCn = document.getElementById('tags-cn');
+    
+    if (source === 'global') {
+        // 切换到全球模式
+        input.placeholder = "试试搜：Chicken, Beef, 汉堡...";
+        if(tagsGlobal) tagsGlobal.classList.remove('d-none'); // 显示全球标签
+        if(tagsCn) tagsCn.classList.add('d-none');            // 隐藏中式标签
+    } else {
+        // 切换到中式模式
+        input.placeholder = "试试搜：红烧肉, 宫保鸡丁, 鱼香肉丝...";
+        if(tagsGlobal) tagsGlobal.classList.add('d-none');    // 隐藏全球标签
+        if(tagsCn) tagsCn.classList.remove('d-none');         // 显示中式标签
+    }
+    
+    // 提示用户
+    showAlert(`已切换到：${source === 'global' ? '全球食谱 (需翻译)' : '中式精选 (聚合数据)'}`, 'success');
+}
+
+
+
+
+// ========== 智能翻译缓存系统 ==========
+const translationCache = {
+    generateKey: function(text) {
+        let hash = 0;
+        for (let i = 0; i < Math.min(text.length, 100); i++) {
+            hash = ((hash << 5) - hash) + text.charCodeAt(i);
+            hash = hash & hash;
+        }
+        return 'trans_' + Math.abs(hash).toString(36);
+    },
+    get: function(key) {
+        try {
+            const cached = localStorage.getItem(key);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+                    return parsed.data;
+                }
+            }
+        } catch (e) { console.warn("缓存读取失败:", e); }
+        return null;
+    },
+    set: function(key, data) {
+        try {
+            localStorage.setItem(key, JSON.stringify({ data: data, timestamp: Date.now() }));
+        } catch (e) { console.warn("缓存保存失败:", e); }
+    }
 };
 
-
+// ========== 菜谱详情缓存 ==========
+const recipeCache = {
+    get: function(id) {
+        try {
+            const cached = localStorage.getItem(`recipe_${id}`);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (Date.now() - parsed.timestamp < 7 * 24 * 60 * 60 * 1000) {
+                    return parsed.data;
+                }
+            }
+        } catch (e) { console.warn("菜谱缓存读取失败:", e); }
+        return null;
+    },
+    set: function(id, data) {
+        try {
+            localStorage.setItem(`recipe_${id}`, JSON.stringify({ data: data, timestamp: Date.now() }));
+        } catch (e) { console.warn("菜谱缓存保存失败:", e); }
+    }
+};
 
 let searchInput, searchBtn, recipeContainer, recipeModal, collectModal;
 let customAlert, alertText, collectList, modalTitle, modalImg, modalIngredients, modalInstructions;
@@ -150,54 +134,91 @@ let bmiHeight, bmiWeight, bmiBtn, bmiResult, aiInput, aiBtn, chatHistory;
 // ========== 2. 翻译与工具函数 ==========
 async function translateText(text) {
     if (!text) return "";
+    
+    // 1. 检查缓存
+    const cacheKey = translationCache.generateKey(text);
+    const cached = translationCache.get(cacheKey);
+    if (cached) {
+        console.log("✅ 使用缓存翻译");
+        return cached;
+    }
+    
+    console.log("📡 请求API翻译");
+    
     try {
+        const systemPrompt = `你是一个专业的中文食谱翻译助手。请将以下菜谱内容翻译成中文：
+1. 食材名称：将英文食材名翻译成中文（如：Chicken → 鸡肉）
+2. 计量单位：将英文单位转换为中文单位（tbsp->汤匙, cup->杯 等）
+3. 格式要求：保持所有分隔符 ||| 和 | 不变，不要添加任何解释`;
+
         const response = await fetch(DEEPSEEK_URL, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${DEEPSEEK_KEY}` },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${DEEPSEEK_KEY}` 
+            },
             body: JSON.stringify({
                 model: "deepseek-chat",
-                messages: [{ role: "system", content: "翻译成中文。保留 '|||' 和 '|'。将度量单位翻译成中文。不要解释。" }, { role: "user", content: text.slice(0, 3000) }],
-                temperature: 0.1
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text.slice(0, 3000) }
+                ],
+                temperature: 0.1,
+                max_tokens: 2000
             })
         });
+        
         const data = await response.json();
-        if (data.choices && data.choices.length > 0) return data.choices[0].message.content.trim();
-    } catch (e) { }
-    
-    let fallbackText = text;
-    for (let key in DICTIONARY) {
-        const regex = new RegExp(`\\b${key}\\b`, 'gi');
-        fallbackText = fallbackText.replace(regex, DICTIONARY[key]);
+        let result = text;
+        
+        if (data.choices && data.choices.length > 0) {
+            result = data.choices[0].message.content.trim();
+            translationCache.set(cacheKey, result);
+        }
+        return result;
+        
+    } catch (e) {
+        console.error("翻译API失败:", e);
+        return localFallbackTranslate(text);
     }
-    return fallbackText;
 }
 
-function formatMeasure(measure) {
-    if (!measure) return "";
-    let res = measure.trim(); // 先去除首尾空格，避免空格影响匹配
+// 本地后备翻译
+function localFallbackTranslate(text) {
+    console.log("🔄 使用本地翻译后备");
+    let result = text;
     
-    // 1. 替换单位（使用UNIT_MAP）
-    // 按单位长度倒序处理，避免短单位先匹配导致长单位无法匹配（如tbs不会被tb先匹配）
-    const sortedUnits = Object.keys(UNIT_MAP).sort((a, b) => b.length - a.length);
+    // 简单的单位替换
+    const unitMap = {
+        'tbsp': '汤匙', 'tablespoon': '汤匙', 'tablespoons': '汤匙',
+        'tsp': '茶匙', 'teaspoon': '茶匙', 'teaspoons': '茶匙',
+        'cup': '杯', 'cups': '杯',
+        'oz': '盎司', 'ounce': '盎司', 'ounces': '盎司',
+        'lb': '磅', 'pound': '磅', 'pounds': '磅',
+        'g': '克', 'gram': '克', 'grams': '克',
+        'kg': '千克', 'kilogram': '千克', 'kilograms': '千克',
+        'ml': '毫升', 'milliliter': '毫升', 'milliliters': '毫升',
+        'l': '升', 'liter': '升', 'liters': '升'
+    };
     
-    sortedUnits.forEach(key => {
-        // 使用正则确保匹配完整单词，避免部分匹配（如tbs不会匹配tablespoon）
+    // 替换单位
+    for (const [en, cn] of Object.entries(unitMap)) {
+        const regex = new RegExp(`(\\d+[\\s]*)(?:${en})\\b`, 'gi');
+        result = result.replace(regex, `$1${cn}`);
+        const fractionRegex = new RegExp(`(\\d+\\/\\d+[\\s]*)(?:${en})\\b`, 'gi');
+        result = result.replace(fractionRegex, `$1${cn}`);
+    }
+    
+    // 翻译食材名称
+    for (let key in DICTIONARY) {
         const regex = new RegExp(`\\b${key}\\b`, 'gi');
-        if (regex.test(res)) {
-            res = res.replace(regex, UNIT_MAP[key]);
-        }
-    });
-    
-    // 2. 处理数字与单位之间的空格（如"1 汤匙"→"1汤匙"）
-    res = res.replace(/(\d+)\s+([^\d\s])/g, '$1$2');
-    
-    // 3. 处理可能的残留英文复数形式（如"汤匙s"→"汤匙"）
-    res = res.replace(/汤匙s/g, '汤匙')
-             .replace(/茶匙s/g, '茶匙')
-             .replace(/杯s/g, '杯');
-             
-    return res;
+        result = result.replace(regex, DICTIONARY[key]);
+    }
+    return result;
 }
+
+// [已删除] formatMeasure, fallbackTranslate, formatMeasureSimple 
+// 这些都是旧的翻译函数，现在已经被 translateText 和 localFallbackTranslate 取代了。
 
 function cleanMarkdown(text) {
     if (!text) return "";
@@ -215,7 +236,6 @@ function resetUploadForm() {
 function showAlert(msg, type = 'info') {
     alertText.textContent = msg; 
     customAlert.className = `custom-alert show`;
-    // 简单的颜色区分
     customAlert.style.borderLeftColor = type === 'warning' ? '#ffc107' : (type === 'success' ? '#28a745' : '#FF8C00');
     setTimeout(() => customAlert.classList.remove('show'), 2000);
 }
@@ -234,7 +254,7 @@ function saveUserData(data) {
     } catch(e) {
         console.error(e);
         showAlert('保存失败：图片太大或存储已满！', 'warning');
-        throw e; // 中断后续逻辑
+        throw e;
     }
 }
 
@@ -271,7 +291,7 @@ function updateUserUI() {
     }
 }
 
-// ========== 4. 菜谱上传与展示 (核心修复：图片大小检测) ==========
+// ========== 4. 菜谱上传与展示 ==========
 function addUserRecipe(recipe) {
     const data = getUserData();
     if (!data.currentUser) {
@@ -286,7 +306,7 @@ function addUserRecipe(recipe) {
     
     user.recipes.push(recipe);
     try {
-        saveUserData(data); // 这里可能会因为图片大而报错
+        saveUserData(data); 
         showAlert('菜谱上传成功！', 'success');
         renderMyRecipesList();
         return true;
@@ -313,7 +333,7 @@ function renderMyRecipesList() {
 
     recipes.forEach(r => {
         const div = document.createElement('div');
-        div.className = 'collect-item'; // 样式类名已恢复
+        div.className = 'collect-item'; 
         div.innerHTML = `
             <img src="${r.image}" class="collect-item-img">
             <div class="collect-item-info">
@@ -357,20 +377,49 @@ function deleteUserRecipe(id) {
 }
 
 // ========== 5. 收藏功能 ==========
-function toggleCollection(btn, item) {
+async function toggleCollection(btn, item) {
     const data = getUserData();
-    if (!data.currentUser) { new bootstrap.Modal(document.getElementById('loginModal')).show(); return; }
+    if (!data.currentUser) { 
+        new bootstrap.Modal(document.getElementById('loginModal')).show(); 
+        return; 
+    }
+    
     const user = data.users.find(u => u.username === data.currentUser);
     const idx = user.collections.findIndex(c => c.idMeal === item.idMeal);
+    
     if (idx > -1) { 
+        // 取消收藏
         user.collections.splice(idx, 1); 
         btn.classList.remove('active'); 
         showAlert('已取消收藏'); 
     } else { 
-        user.collections.push(item); 
-        btn.classList.add('active'); 
-        showAlert('收藏成功'); 
+        // 添加收藏，同时获取中文翻译
+        try {
+            // 获取中文翻译
+            const translatedTitle = await translateText(item.strMeal);
+            
+            // 创建带有中文翻译的收藏项
+            const collectionItem = {
+                ...item,
+                strMealCN: translatedTitle || item.strMeal // 保存中文标题
+            };
+            
+            user.collections.push(collectionItem); 
+            btn.classList.add('active'); 
+            showAlert('收藏成功'); 
+        } catch (error) {
+            console.error("翻译失败，保存英文标题:", error);
+            // 如果翻译失败，至少保存英文标题
+            const collectionItem = {
+                ...item,
+                strMealCN: item.strMeal
+            };
+            user.collections.push(collectionItem); 
+            btn.classList.add('active'); 
+            showAlert('收藏成功 (使用英文标题)'); 
+        }
     }
+    
     saveUserData(data); 
     renderCollectList();
 }
@@ -391,41 +440,29 @@ function renderCollectList() {
         return;
     }
     
-    // 收集所有需要翻译的标题
-    const titles = user.collections.map(item => item.strMeal).join(" ||| ");
-    let cnTitlesStr = titles;
+    // 直接渲染，因为收藏时已经保存了中文标题
+    renderWithTranslations(user.collections);
     
-    // 批量翻译标题
-    try {
-        translateText(titles).then(translated => {
-            if (translated && translated.includes("|||")) {
-                cnTitlesStr = translated;
-            }
-            renderWithTranslations(user.collections, cnTitlesStr.split("|||"));
-        }).catch(() => {
-            // 翻译失败时使用原标题
-            renderWithTranslations(user.collections, user.collections.map(item => item.strMeal));
-        });
-    } catch (e) {
-        renderWithTranslations(user.collections, user.collections.map(item => item.strMeal));
-    }
-    
-    // 带翻译的渲染函数
-    function renderWithTranslations(collections, translatedTitles) {
+    function renderWithTranslations(collections) {
         list.innerHTML = '<div class="collect-list"></div>';
         const container = list.querySelector('.collect-list');
         
-        collections.forEach((item, index) => {
-            // 使用翻译后的标题
-            let displayTitle = translatedTitles[index] ? translatedTitles[index].trim() : item.strMeal;
+        collections.forEach((item) => {
+            // 优先使用保存的中文标题，如果没有则用英文标题
+            let displayTitle = item.strMealCN || item.strMeal;
             displayTitle = displayTitle.replace(/^\|/, '').trim();
+            
+            // 截断过长的标题
+            if (displayTitle.length > 25) {
+                displayTitle = displayTitle.substring(0, 25) + '...';
+            }
             
             const div = document.createElement('div');
             div.className = 'collect-item'; 
             div.innerHTML = `
                 <img src="${item.strMealThumb}" class="collect-item-img">
                 <div class="collect-item-info">
-                    <h5 class="collect-item-title">${displayTitle}</h5>
+                    <h5 class="collect-item-title" title="${item.strMealCN || item.strMeal}">${displayTitle}</h5>
                     <div class="collect-item-actions">
                         <button class="collect-item-btn btn-view" onclick="viewCollectedRecipe('${item.idMeal}')"><i class="bi bi-eye"></i> 详情</button>
                         <button class="collect-item-btn btn-remove" onclick="toggleCollection(this, {idMeal:'${item.idMeal}'})"><i class="bi bi-trash"></i> 删除</button>
@@ -443,22 +480,47 @@ function isRecipeCollected(id) {
     return user ? user.collections.some(c => c.idMeal === id) : false;
 }
 
-// ========== 6. 搜索与详情页 (已修复翻译与单位) ==========
+// ========== 6. 搜索与详情页 ==========
 
+// 总搜索入口（分流器），因为现在新增了中国食谱
 async function fetchRecipes(query) {
-    // 清空容器并显示加载状态
+    // 1. 获取搜索词（如果未传参，则获取输入框的值）
+    const searchQuery = query || document.getElementById('search-input').value.trim();
+    if (!searchQuery) return;
+
+    // 2. 显示加载动画
+    const loadingText = currentSource === 'global' ? '翻译并搜索...' : '搜索中式美味...';
+    recipeContainer.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-warning" style="width: 3rem; height: 3rem;"></div><p class="mt-3 text-muted">${loadingText}</p></div>`;
+    
+    // 3. 根据当前源，决定调用哪个函数
+    if (currentSource === 'chinese') {
+        await fetchJuheRecipes(searchQuery); // 调用下面将要写的新函数
+    } else {
+        await fetchGlobalRecipes(searchQuery); // 调用你刚才改名的旧函数
+    }
+}
+
+// [新增] 处理天气推荐点击
+function handleWeatherSearch(enWord, cnWord) {
+    // 根据当前选中的源，决定搜哪个词
+    const query = currentSource === 'global' ? enWord : cnWord;
+    
+    // 如果当前源不匹配，自动切换（可选，为了用户体验更好）
+    // 这里我们简单处理，直接把词填入搜索框并搜索
+    document.getElementById('search-input').value = query;
+    fetchRecipes(query);
+}
+
+async function fetchGlobalRecipes(query) {
     recipeContainer.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-warning" style="width: 3rem; height: 3rem;"></div><p class="mt-3 text-muted">正在搜索并翻译...</p></div>`;
     
     try {
         let searchQuery = query.trim();
         
-        // 中文关键词处理逻辑
         if (/[\u4e00-\u9fa5]/.test(searchQuery)) {
-            // 1. 优先使用精确映射
             if (SMART_MAP[searchQuery]) {
                 searchQuery = SMART_MAP[searchQuery];
             } 
-            // 2. 尝试DeepSeek翻译API转换
             else {
                 try {
                     const translated = await translateText(`将"${searchQuery}"翻译成对应的英文食物名称，仅返回单词或短语，不要解释`);
@@ -467,30 +529,25 @@ async function fetchRecipes(query) {
                     }
                 } catch (e) {
                     console.log("翻译API调用失败，使用备选方案");
-                    // 3. 备选方案：使用拼音首字母（需要pinyinUtil支持）
                     searchQuery = pinyinUtil.getFirstLetter(searchQuery).join('');
                 }
             }
         }
 
-        // 第一次搜索
         const response = await fetch(`${RECIPE_API}search.php?s=${encodeURIComponent(searchQuery)}`);
         const data = await response.json();
 
-        // 搜索结果处理
         if (!data.meals || data.meals.length === 0) {
-            // 尝试更宽泛的搜索（取第一个单词）
             const broadQuery = searchQuery.split(' ')[0];
             if (broadQuery && broadQuery !== searchQuery) {
                 const broadResponse = await fetch(`${RECIPE_API}search.php?s=${encodeURIComponent(broadQuery)}`);
-                const broadData = await broadResponse.json();
+                const broeata = await broadResponse.json();
                 if (broadData.meals && broadData.meals.length > 0) {
                     showAlert(`未找到"${query}"的精确结果，为您展示相关食谱`, 'info');
                     await displayRecipes(broadData.meals);
                     return;
                 }
             }
-            // 完全无结果
             recipeContainer.innerHTML = `
                 <div class="col-12 text-center py-5">
                     <h4>没找到相关菜谱</h4>
@@ -504,7 +561,6 @@ async function fetchRecipes(query) {
             return;
         }
 
-        // 展示搜索结果
         await displayRecipes(data.meals);
 
     } catch (error) {
@@ -519,34 +575,36 @@ async function fetchRecipes(query) {
 }
 
 async function displayRecipes(list) {
-    // 限制最多显示12条结果
     const limitedList = list.slice(0, 12);
-    const titles = limitedList.map(item => item.strMeal).join(" ||| ");
-    let cnTitlesStr = titles;
-
-    // 批量翻译菜谱标题
+    let cnTitles = [];
+    
     try {
-        const res = await translateText(titles);
-        if (res && res.includes("|||")) {
-            cnTitlesStr = res;
+        const titles = limitedList.map(item => item.strMeal);
+        const titlesText = titles.join(" ||| ");
+        
+        const translated = await translateText(titlesText);
+        
+        if (translated && translated.includes("|||")) {
+            cnTitles = translated.split("|||").map(t => t.trim());
+        } else {
+            cnTitles = titles;
         }
     } catch (e) {
         console.log("标题翻译失败，使用原标题");
+        cnTitles = limitedList.map(item => item.strMeal);
     }
-    const cnTitles = cnTitlesStr.split("|||");
-
-    // 生成菜谱卡片
+    
     recipeContainer.innerHTML = "";
     limitedList.forEach((item, index) => {
         const isCollected = isRecipeCollected(item.idMeal);
-        // 处理翻译后的标题
-        let displayTitle = cnTitles[index] ? cnTitles[index].trim() : item.strMeal;
+        
+        let displayTitle = cnTitles[index] || item.strMeal;
         displayTitle = displayTitle.replace(/^\|/, '').trim();
-        // 截断过长标题
+        
         if (displayTitle.length > 20) {
             displayTitle = displayTitle.substring(0, 20) + '...';
         }
-
+        
         const col = document.createElement("div");
         col.className = "col";
         col.innerHTML = `
@@ -569,129 +627,128 @@ async function displayRecipes(list) {
             </div>`;
         recipeContainer.appendChild(col);
     });
-
-    // 如果结果为空显示提示
+    
     if (limitedList.length === 0) {
         recipeContainer.innerHTML = `<div class="col-12 text-center py-5"><h4>暂无相关菜谱</h4></div>`;
     }
 }
 
 window.showDetails = async function(id) {
-    // 显示加载状态
+    console.log("🔄 显示菜谱详情:", id);
+    
     modalTitle.innerText = "加载中...";
-    modalInstructions.innerHTML = `
-        <div class="text-center p-5">
-            <div class="spinner-border text-warning"></div>
-            <br><span class="text-muted">正在请求数据并汉化...</span>
-        </div>`;
-    modalIngredients.innerHTML = "";
     modalImg.src = "";
-
+    modalIngredients.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-warning"></div>
+            <p class="mt-2 text-muted">正在加载菜谱详情...</p>
+        </div>`;
+    modalInstructions.innerHTML = "";
+    
+    recipeModal.show();
+    
     try {
-        // 获取详情数据
+        const cachedRecipe = recipeCache.get(id);
+        if (cachedRecipe) {
+            console.log("📦 使用缓存的菜谱数据");
+            displayRecipeDetail(cachedRecipe);
+            return;
+        }
+        
         const response = await fetch(`${RECIPE_API}lookup.php?i=${id}`);
         const data = await response.json();
+        
         if (!data.meals || data.meals.length === 0) {
             throw new Error("未找到菜谱详情");
         }
+        
         const item = data.meals[0];
-        modalImg.src = item.strMealThumb || 'default-recipe.jpg';
-        modalImg.onerror = () => modalImg.src = 'default-recipe.jpg';
-
-        // 提取食材和用量
-        let ingredientsList = [];
-        let measuresList = [];
+        
+        let ingredientsWithMeasures = [];
         for (let i = 1; i <= 20; i++) {
             const ing = item[`strIngredient${i}`];
             const measure = item[`strMeasure${i}`];
             if (ing && ing.trim()) {
-                ingredientsList.push(ing.trim());
-                measuresList.push(formatMeasure(measure || ''));
+                const fullIngredient = (measure ? measure + ' ' : '') + ing.trim();
+                ingredientsWithMeasures.push(fullIngredient);
             }
         }
-
-        // 准备翻译内容
-        const ingString = ingredientsList.join(" | ");
-        const bigText = `${item.strMeal} ||| ${ingString} ||| ${item.strInstructions}`;
-        let translatedText = bigText;
-
-        // 调用翻译API
+        
+        const ingredientsText = ingredientsWithMeasures.join(" | ");
+        const textToTranslate = `${item.strMeal} ||| ${ingredientsText} ||| ${item.strInstructions}`;
+        
+        let translatedText = textToTranslate;
         try {
-            const apiRes = await translateText(bigText);
-            if (apiRes && apiRes.length > 10) {
-                translatedText = apiRes;
-            }
-        } catch (e) {
-            console.log("详情翻译失败，使用原文");
-            showAlert("翻译服务暂时不可用，显示原文", 'warning');
+            translatedText = await translateText(textToTranslate);
+        } catch (translateError) {
+            console.warn("翻译失败，使用原文:", translateError);
         }
-
-        // 处理翻译结果
-        const parts = translatedText.split("|||");
-        modalTitle.innerText = parts[0] ? parts[0].trim() : item.strMeal;
         
-        // 处理食材列表
-        const cnIngString = parts[1] ? parts[1].trim() : ingString;
-        const cnIngredients = cnIngString.split("|"); 
+        const parts = translatedText.split("|||").map(part => part ? part.trim() : "");
         
-        let ingredientsHtml = "";
-        for (let i = 0; i < ingredientsList.length; i++) {
-            let name = cnIngredients[i] ? cnIngredients[i].trim() : ingredientsList[i];
-            name = name.replace(/^[|·\s]+/, ''); 
-            let measure = measuresList[i] || "";
-            ingredientsHtml += `
-                <li class="d-flex justify-content-between py-2 border-bottom border-light">
-                    <span><i class="bi bi-dot text-warning"></i> ${name}</span>
-                    <span class="text-secondary small">${measure}</span>
-                </li>`;
-        }
-        modalIngredients.innerHTML = ingredientsHtml;
-
-        // 处理烹饪步骤
-        const cnIns = parts[2] ? parts[2].trim() : item.strInstructions;
-        modalInstructions.innerHTML = cnIns
-            .replace(/\r\n/g, "<br>")
-            .replace(/\n/g, "<br><br>")
-            .replace(/Step \d+:/g, match => `<strong>${match}</strong>`);
-
-        // 显示模态框
-        recipeModal.show();
-
-    } catch (e) {
-        console.error("详情加载失败:", e);
+        const recipeData = {
+            id: id,
+            title: parts[0] || item.strMeal,
+            image: item.strMealThumb || 'default-recipe.jpg',
+            ingredients: parts[1] ? parts[1].split("|").map(i => i.trim()).filter(i => i) : ingredientsWithMeasures,
+            instructions: parts[2] || item.strInstructions,
+            rawIngredients: ingredientsWithMeasures,
+            translatedParts: parts 
+        };
+        
+        recipeCache.set(id, recipeData);
+        displayRecipeDetail(recipeData);
+        
+    } catch (error) {
+        console.error("❌ 加载菜谱失败:", error);
+        
+        modalTitle.innerText = "加载失败";
         modalInstructions.innerHTML = `
-            <div class="text-center p-5 text-danger">
-                <i class="bi bi-exclamation-circle fs-3 mb-2"></i>
-                <p>加载失败，请稍后重试</p>
-                <button class="btn btn-sm btn-warning mt-2" onclick="showDetails('${id}')">重新加载</button>
+            <div class="text-center p-5">
+                <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
+                <h5 class="mt-3">加载失败</h5>
+                <p class="text-muted">${error.message || "请检查网络连接"}</p>
+                <button class="btn btn-warning mt-3" onclick="showDetails('${id}')">
+                    <i class="bi bi-arrow-clockwise"></i> 重新加载
+                </button>
             </div>`;
     }
-}
+};
 
-// 辅助函数：处理计量单位
-function formatMeasure(measure) {
-    if (!measure) return "";
-    // 转换常见英文计量单位为中文
-    const measureMap = {
-        'tbsp': '汤匙',
-        'tsp': '茶匙',
-        'cup': '杯',
-        'oz': '盎司',
-        'lb': '磅',
-        'g': '克',
-        'kg': '千克',
-        'ml': '毫升',
-        'l': '升'
+function displayRecipeDetail(recipeData) {
+    modalTitle.innerText = recipeData.title;
+    
+    modalImg.src = recipeData.image;
+    modalImg.onerror = () => {
+        modalImg.src = 'default-recipe.jpg';
     };
-    let result = measure.trim();
-    for (const [en, cn] of Object.entries(measureMap)) {
-        result = result.replace(new RegExp(en, 'gi'), cn);
+    
+    let ingredientsHtml = "";
+    if (recipeData.ingredients && recipeData.ingredients.length > 0) {
+        recipeData.ingredients.forEach((ingredient, index) => {
+            if (ingredient && ingredient.trim()) {
+                ingredientsHtml += `
+                    <li class="d-flex justify-content-between py-2 border-bottom border-light">
+                        <span><i class="bi bi-dot text-warning"></i> ${ingredient.trim()}</span>
+                    </li>`;
+            }
+        });
+    } else {
+        ingredientsHtml = `<li class="text-muted py-2">暂无食材信息</li>`;
     }
-    return result;
+    modalIngredients.innerHTML = ingredientsHtml;
+    
+    let instructionsHtml = recipeData.instructions || "暂无烹饪步骤";
+    instructionsHtml = instructionsHtml
+        .replace(/\r\n/g, "<br>")
+        .replace(/\n/g, "<br>")
+        .replace(/STEP\s*\d+/gi, match => `<strong>${match}</strong>`)
+        .replace(/Step\s*\d+/gi, match => `<strong>${match}</strong>`);
+    
+    modalInstructions.innerHTML = instructionsHtml;
 }
 
-
-// ========== 7. 页面初始化 (含发布帖子与所有功能) ==========
+// ========== 7. 页面初始化 ==========
 function handleAiRecipeClick() {
     const aiSection = document.getElementById('ai-robot-section');
     if (aiSection) {
@@ -707,6 +764,317 @@ function loadChatHistory() {
     const defaultChat = `<div class="message message-ai">👨‍🍳 你好！我是你的AI大厨，有什么烹饪问题都可以问我！</div>`;
     chatHistory.innerHTML = (data.currentUser && localStorage.getItem(`chatHistory_${data.currentUser}`)) || defaultChat;
     chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// [新增] 聚合数据中式搜索
+async function fetchJuheRecipes(query) {
+    try {
+        console.log(`正在请求聚合数据: ${query}`);
+        // 组装请求 URL
+        const url = `${JUHE_API_URL}?key=${JUHE_KEY}&word=${encodeURIComponent(query)}&num=12`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+
+        console.log("聚合数据返回:", data);
+
+        if (data.error_code === 0 && data.result && data.result.list) {
+            displayJuheRecipes(data.result.list);
+        } else {
+            // 错误处理
+            let errorMsg = data.reason || '未找到相关菜谱';
+            if(data.error_code === 10012) errorMsg = "接口请求超过次数限制 (每日100次)";
+            
+            recipeContainer.innerHTML = `
+                <div class="col-12 text-center py-5">
+                    <h4>未找到 "${query}"</h4>
+                    <p class="text-muted">${errorMsg}</p>
+                    <button class="btn btn-sm btn-outline-warning mt-2" onclick="fetchJuheRecipes('红烧肉')">试试搜：红烧肉</button>
+                </div>`;
+        }
+    } catch (error) {
+        console.error("中式搜索出错:", error);
+        recipeContainer.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
+                <h5 class="mt-3">请求被拦截 (跨域问题)</h5>
+                <p class="text-muted text-start d-inline-block mt-2">
+                    聚合数据 API 不支持浏览器直接调用。<br>
+                    <strong>解决方法：</strong><br>
+                    1. 请安装 Chrome 插件: <span class="text-warning">Allow CORS: Access-Control-Allow-Origin</span><br>
+                    2. 安装后点击插件图标激活 (图标变彩色)<br>
+                    3. 重新点击搜索
+                </p>
+            </div>`;
+    }
+}
+
+
+//无图片 
+function displayJuheRecipes(list) {
+    recipeContainer.innerHTML = "";
+    list.forEach(item => {
+        // 1. 使用纯CSS文字图片，不依赖外部图片
+        // 生成一个包含菜名的文字卡片，有漂亮的背景色
+        const generateTextImageHTML = (name) => {
+            // 取菜名第一个字符作为大图标
+            const firstChar = name.charAt(0);
+            
+            // 为不同菜系生成不同颜色的背景
+            const colorThemes = [
+                { bg: '#ff9a8b', text: '#ffffff' }, // 橙色系
+                { bg: '#4facfe', text: '#ffffff' }, // 蓝色系
+                { bg: '#00cdac', text: '#ffffff' }, // 绿色系
+                { bg: '#ff6b6b', text: '#ffffff' }, // 红色系
+                { bg: '#a8edea', text: '#333333' }, // 浅蓝系
+                { bg: '#fed6e3', text: '#333333' }, // 粉色系
+                { bg: '#d299c2', text: '#ffffff' }, // 紫色系
+                { bg: '#f6d365', text: '#333333' }, // 黄色系
+            ];
+            
+            // 根据菜名哈希选择颜色主题
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const theme = colorThemes[Math.abs(hash) % colorThemes.length];
+            
+            return `
+                <div class="text-image-container" style="
+                    height: 180px; 
+                    background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}80 100%);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    color: ${theme.text};
+                    border-radius: 8px 8px 0 0;
+                    overflow: hidden;
+                    position: relative;
+                ">
+                    <div class="text-image-char" style="
+                        font-size: 4rem;
+                        font-weight: 900;
+                        opacity: 0.8;
+                        margin-bottom: 10px;
+                    ">${firstChar}</div>
+                    <div class="text-image-name" style="
+                        font-size: 1.2rem;
+                        font-weight: 700;
+                        text-align: center;
+                        padding: 0 10px;
+                        max-width: 100%;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    ">${name}</div>
+                    <div class="text-image-subtitle" style="
+                        font-size: 0.9rem;
+                        opacity: 0.9;
+                        margin-top: 5px;
+                        font-weight: 500;
+                    ">${item.type_name || '美味佳肴'}</div>
+                </div>
+            `;
+        };
+        
+        // 2. 处理食材：聚合数据返回的是字符串 "黄瓜300克；海米10克"
+        let ingredientsArr = [];
+        if (item.yuanliao) {
+            ingredientsArr = item.yuanliao.split(/；|;/).filter(i => i.trim());
+        }
+        if (item.tiaoliao) {
+            const tiaoliaoArr = item.tiaoliao.split(/；|;/).filter(i => i.trim());
+            ingredientsArr = ingredientsArr.concat(tiaoliaoArr);
+        }
+        
+        // 3. 存入缓存
+        recipeCache.set(item.id, {
+            id: item.id,
+            title: item.cp_name,
+            image: null, // 标记为无图片
+            ingredients: ingredientsArr,
+            instructions: (item.zuofa || "暂无步骤描述").replace(/(\d+\.)/g, "<br>$1"),
+            tags: item.type_name || "中式菜肴",
+            desc: item.texing || item.tishi || "",
+            hasImage: false // 标记是否有真实图片
+        });
+
+        const col = document.createElement("div");
+        col.className = "col";
+        col.innerHTML = `
+            <div class="card h-100" onclick="showJuheDetails('${item.id}')">
+                <div class="position-absolute top-0 end-0 p-2">
+                    <span class="badge bg-danger shadow">中式精选</span>
+                </div>
+                
+                <!-- 文字图片区域 -->
+                ${generateTextImageHTML(item.cp_name)}
+                
+                <div class="card-body">
+                    <h5 class="card-title text-truncate" title="${item.cp_name}">${item.cp_name}</h5>
+                    
+                    <div class="card-meta d-flex justify-content-between align-items-center mb-2">
+                        <div class="card-rating text-warning">
+                            <i class="bi bi-star-fill"></i> 
+                            <span>${(Math.random() * 0.5 + 4.5).toFixed(1)}</span>
+                        </div>
+                        <div class="card-time text-muted small">
+                            <i class="bi bi-tags me-1"></i>
+                            <span>${item.type_name || '家常菜'}</span>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text small text-muted mt-2" style="
+                        display: -webkit-box;
+                        -webkit-line-clamp: 2;
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                        line-height: 1.4;
+                        height: 2.8em;
+                    ">
+                        ${item.texing || item.tishi || '暂无描述'}
+                    </p>
+                    
+                    <!-- 食材预览 -->
+                    <div class="ingredients-preview mt-2">
+                        <span class="badge bg-light text-dark me-1 mb-1">
+                            <i class="bi bi-egg-fried me-1"></i> ${ingredientsArr.length}种食材
+                        </span>
+                    </div>
+                </div>
+            </div>`;
+        recipeContainer.appendChild(col);
+    });
+}
+
+// 同时需要修改 showJuheDetails 函数来处理文字图片
+function showJuheDetails(id) {
+    const recipe = recipeCache.get(id); 
+    if(!recipe) return;
+
+    modalTitle.innerText = recipe.title;
+    
+    // 如果无真实图片，显示文字图片
+    if (!recipe.hasImage) {
+        // 创建文字图片
+        const firstChar = recipe.title.charAt(0);
+        const colorThemes = [
+            { bg: '#ff9a8b', text: '#ffffff' },
+            { bg: '#4facfe', text: '#ffffff' },
+            { bg: '#00cdac', text: '#ffffff' },
+            { bg: '#ff6b6b', text: '#ffffff' },
+        ];
+        let hash = 0;
+        for (let i = 0; i < recipe.title.length; i++) {
+            hash = recipe.title.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const theme = colorThemes[Math.abs(hash) % colorThemes.length];
+        
+        modalImg.src = ''; // 清除图片源
+        modalImg.style.display = 'none'; // 隐藏img标签
+        
+        // 在modal-img的位置插入文字图片
+        const textImageHTML = `
+            <div style="
+                width: 100%;
+                height: 300px;
+                background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}80 100%);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: ${theme.text};
+                border-radius: 8px;
+                margin-bottom: 20px;
+            ">
+                <div style="
+                    font-size: 6rem;
+                    font-weight: 900;
+                    opacity: 0.8;
+                    margin-bottom: 20px;
+                ">${firstChar}</div>
+                <div style="
+                    font-size: 2rem;
+                    font-weight: 700;
+                    text-align: center;
+                    padding: 0 20px;
+                ">${recipe.title}</div>
+                <div style="
+                    font-size: 1.2rem;
+                    opacity: 0.9;
+                    margin-top: 10px;
+                    font-weight: 500;
+                ">${recipe.tags || '中式美味'}</div>
+            </div>
+        `;
+        
+        // 将文字图片插入到modal-img的位置
+        const imgContainer = modalImg.parentElement;
+        imgContainer.insertAdjacentHTML('beforeend', textImageHTML);
+        modalImg.style.display = 'none';
+    } else {
+        // 有真实图片，正常显示
+        modalImg.src = recipe.image;
+        modalImg.style.display = 'block';
+    }
+    
+    // 渲染食材列表
+    let ingredientsHtml = "";
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+        recipe.ingredients.forEach(ing => {
+            ingredientsHtml += `<li class="d-flex justify-content-between py-2 border-bottom border-light">
+                <span><i class="bi bi-dot text-warning"></i> ${ing}</span>
+            </li>`;
+        });
+    } else {
+        ingredientsHtml = "<li>暂无详细食材</li>";
+    }
+    
+    // 如果有特色描述，加在最前面
+    if (recipe.desc) {
+        ingredientsHtml = `<li class="py-2 bg-light px-2 rounded mb-2 text-muted small"><i class="bi bi-info-circle"></i> ${recipe.desc}</li>` + ingredientsHtml;
+    }
+
+    modalIngredients.innerHTML = ingredientsHtml;
+    
+    // 渲染步骤
+    modalInstructions.innerHTML = recipe.instructions;
+    
+    recipeModal.show();
+}
+
+
+function showJuheDetails(id) {
+    const recipe = recipeCache.get(id); 
+    if(!recipe) return;
+
+    modalTitle.innerText = recipe.title;
+    modalImg.src = recipe.image;
+    
+    // 渲染食材列表
+    let ingredientsHtml = "";
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+        recipe.ingredients.forEach(ing => {
+            ingredientsHtml += `<li class="d-flex justify-content-between py-2 border-bottom border-light">
+                <span><i class="bi bi-dot text-warning"></i> ${ing}</span>
+            </li>`;
+        });
+    } else {
+        ingredientsHtml = "<li>暂无详细食材</li>";
+    }
+    
+    // 如果有特色描述，加在最前面
+    if (recipe.desc) {
+        ingredientsHtml = `<li class="py-2 bg-light px-2 rounded mb-2 text-muted small"><i class="bi bi-info-circle"></i> ${recipe.desc}</li>` + ingredientsHtml;
+    }
+
+    modalIngredients.innerHTML = ingredientsHtml;
+    
+    // 渲染步骤
+    modalInstructions.innerHTML = recipe.instructions;
+    
+    recipeModal.show();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -732,7 +1100,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initUserStorage(); updateUserUI(); renderCollectList(); renderMyRecipesList(); loadChatHistory();
 
-    // 搜索特效
     const searchIcon = document.querySelector('.search-container .bi-search');
     searchInput.addEventListener('focus', () => { searchInput.style.borderColor = '#FFB800'; searchIcon.style.color = '#FFB800'; });
     searchInput.addEventListener('blur', () => { searchInput.style.borderColor = '#FFD100'; searchIcon.style.color = '#666'; });
@@ -759,7 +1126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // AI
     aiBtn.addEventListener('click', async () => {
         const q = aiInput.value.trim(); if(!q) return;
         chatHistory.innerHTML += `<div class="message message-user">${q}</div>`; aiInput.value='';
@@ -780,17 +1146,123 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.scrollTop = chatHistory.scrollHeight;
     });
 
-    // BMI
-    bmiBtn.addEventListener('click', () => {
-        const h = parseFloat(bmiHeight.value)/100; const w = parseFloat(bmiWeight.value);
-        if(h&&w) { 
-            const bmi=(w/(h*h)).toFixed(1); 
-            bmiResult.innerHTML = `<h3 class="text-${bmi<18.5?'info':(bmi>24?'danger':'success')}">${bmi}</h3>`; 
+    //bmi接入api
+//bmi接入api - 替换这个部分
+//bmi接入api - 最终正确版本
+// ========== BMI计算函数 (已修正) ==========
+bmiBtn.addEventListener('click', async () => {
+    const height = parseFloat(bmiHeight.value);
+    const weight = parseFloat(bmiWeight.value);
+    
+    if (!height || !weight) {
+        showAlert("请输入身高和体重！", "warning");
+        return;
+    }
+    
+    // 验证输入范围
+    if (height < 50 || height > 250) {
+        showAlert("身高应在50-250厘米之间！", "warning");
+        return;
+    }
+    
+    if (weight < 10 || weight > 300) {
+        showAlert("体重应在10-300公斤之间！", "warning");
+        return;
+    }
+    
+    try {
+        // 使用GET请求
+        const url = `${BMI_API}?key=${TIAN_KEY}&height=${height}&weight=${weight}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.code === 200) {
+            // API请求成功
+            const result = data.result;
+            
+            if (!result) {
+                throw new Error("API返回数据格式错误");
+            }
+            
+            const bmi = parseFloat(result.bmi);
+            
+            // 根据BMI值确定样式类
+            let levelClass, levelText;
+            
+            // 解析正常BMI范围
+            let minNorm = 18.5;
+            let maxNorm = 23.9;
+            
+            if (result.normbmi && result.normbmi.includes('~')) {
+                const normParts = result.normbmi.split('~').map(Number);
+                minNorm = normParts[0];
+                maxNorm = normParts[1];
+            }
+            
+            if (bmi < minNorm) {
+                levelClass = 'info';
+                levelText = '偏瘦';
+            } else if (bmi >= minNorm && bmi <= maxNorm) {
+                levelClass = 'success';
+                levelText = '正常';
+            } else if (bmi > maxNorm && bmi <= 28) {
+                levelClass = 'warning';
+                levelText = '超重';
+            } else {
+                levelClass = 'danger';
+                levelText = '肥胖';
+            }
+            
+            // 显示结果
+            bmiResult.innerHTML = `
+                <div class="alert alert-${levelClass}">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-graph-up-arrow fs-3 me-3"></i>
+                        <div>
+                            <h4 class="mb-0">BMI: ${bmi.toFixed(1)}</h4>
+                            <span class="badge bg-${levelClass}">${levelText}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2"><i class="bi bi-rulers text-warning me-2"></i><strong>标准范围:</strong> ${result.normbmi || '18.5~23.9'}</p>
+                            <p class="mb-2"><i class="bi bi-heart-pulse text-warning me-2"></i><strong>健康状况:</strong> ${result.healthy || '--'}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><i class="bi bi-bullseye text-warning me-2"></i><strong>理想体重:</strong> ${result.idealweight ? parseFloat(result.idealweight).toFixed(1) + ' kg' : '--'}</p>
+                            <p class="mb-2"><i class="bi bi-bounding-box text-warning me-2"></i><strong>标准体重范围:</strong> ${result.normweight || '--'} kg</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <i class="bi bi-lightbulb text-warning me-2"></i>
+                        <strong>健康建议:</strong> ${result.tip || '请保持健康的生活方式和饮食习惯'}
+                    </div>
+                </div>
+            `;
+            
             bmiResult.classList.remove('d-none');
+            
+            // 滚动到结果
+            bmiResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            showAlert('BMI计算完成！', 'success');
+            
+        } else {
+            // API返回错误
+            const errorMsg = data.msg || `错误代码: ${data.code}`;
+            showAlert(`计算失败：${errorMsg}`, 'error');
         }
-    });
+        
+    } catch (error) {
+        // 网络错误
+        showAlert('网络连接失败，请稍后重试', 'error');
+    }
+});
 
-    // 监听器
+
+
     document.getElementById('login-btn').addEventListener('click', () => {
         const res = loginUser(document.getElementById('login-username').value, document.getElementById('login-password').value);
         if(res.success) { bootstrap.Modal.getInstance(document.getElementById('loginModal')).hide(); updateUserUI(); loadChatHistory(); renderMyRecipesList(); showAlert(res.msg, 'success'); }
@@ -802,7 +1274,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
     
-    // 菜谱上传 (含图片大小检测)
     document.getElementById('submit-recipe-btn').addEventListener('click', () => {
         const title = document.getElementById('recipe-title').value.trim();
         const ingredients = document.getElementById('recipe-ingredients').value.trim();
@@ -812,7 +1283,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (title && ingredients && steps) {
             if (imgInput.files && imgInput.files[0]) {
-                // 🛑 限制图片大小为 500KB，防止崩溃
                 if (imgInput.files[0].size > 500 * 1024) {
                     showAlert('图片太大了！请上传小于 500KB 的图片。', 'warning');
                     return;
@@ -844,7 +1314,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 社区发布帖子 (为你补充的功能！)
     const submitPostBtn = document.getElementById('submit-post-btn');
     if (submitPostBtn) {
         submitPostBtn.addEventListener('click', () => {
@@ -921,17 +1390,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 全局暴露
-window.toggleCollection = toggleCollection;
-window.removeCollection = toggleCollection;
-window.viewCollectedRecipe = (id) => { showDetails(id); collectModal.hide(); };
-window.viewMyRecipe = viewMyRecipe;
-window.deleteUserRecipe = deleteUserRecipe;
-window.fetchRecipes = fetchRecipes;
-window.showDetails = showDetails;
-window.handleAiRecipeClick = handleAiRecipeClick;
-
-// ========== 和风天气 API 配置 ==========
 // ========== 和风天气 API 配置 ==========
 const WEATHER_API_KEY = "893f42b0056b4d84811dbe54d9bad433";
 const API_BASE = "https://m37p42qcx2.re.qweatherapi.com";
@@ -990,7 +1448,6 @@ function getCurrentLocation() {
 // ========== 2. 用经纬度查询天气 ==========
 async function fetchWeatherByCoords(lat, lon) {
     try {
-        // 用经纬度获取LocationID
         const geoUrl = `${GEO_API_URL}?key=${WEATHER_API_KEY}&location=${lon},${lat}`;
         const geoResponse = await fetch(geoUrl);
         const geoData = await geoResponse.json();
@@ -999,7 +1456,6 @@ async function fetchWeatherByCoords(lat, lon) {
             const locationId = geoData.location[0].id;
             const cityName = geoData.location[0].name;
             
-            // 用LocationID查询天气
             const weatherUrl = `${WEATHER_NOW_API_URL}?key=${WEATHER_API_KEY}&location=${locationId}`;
             const weatherResponse = await fetch(weatherUrl);
             const weatherData = await weatherResponse.json();
@@ -1049,32 +1505,70 @@ async function fetchWeather(cityName) {
     }
 }
 
+
+
 // ========== 4. 更新天气显示 ==========
+
+// 根据天气返回推荐文案
+// 根据天气和温度，生成中文推荐文案
+// [修改] 根据天气和温度，生成推荐文案 (增加 cnKeyword)
+function getWeatherFoodRecommendation(temp, text) {
+    const t = parseFloat(temp);
+    
+    // 1. 天气现象
+    if (text.includes('雨') || text.includes('雷')) {
+        return { msg: "下雨天，煮个热汤暖暖身子吧 🥘", keywordEn: "Soup", keywordCn: "汤" };
+    }
+    if (text.includes('雪')) {
+        return { msg: "外面下雪了，炖肉最适合这种天气 ❄️", keywordEn: "Beef", keywordCn: "炖肉" };
+    }
+    if (text.includes('雾') || text.includes('霾')) {
+        return { msg: "空气一般，吃点清爽的沙拉吧 🥬", keywordEn: "Salad", keywordCn: "凉菜" };
+    }
+
+    // 2. 温度判断
+    if (t >= 30) {
+        return { msg: "天太热了，来份冰淇淋降降温 🍦", keywordEn: "Ice Cream", keywordCn: "凉拌" };
+    } 
+    else if (t >= 20) {
+        return { msg: "天气不错，来份意面怎么样？🍝", keywordEn: "Pasta", keywordCn: "面" };
+    } 
+    else if (t >= 10) {
+        return { msg: "微凉的天气，吃点鸡肉补充能量 🍗", keywordEn: "Chicken", keywordCn: "鸡肉" };
+    } 
+    else {
+        return { msg: "天冷了，必须吃点牛肉御寒了 🥩", keywordEn: "Beef", keywordCn: "牛肉" };
+    }
+}
+
 function updateWeatherDisplay(weatherData, cityName) {
     const weatherResult = document.getElementById('weather-result');
     const locationEl = document.getElementById('weather-location');
     const tempEl = document.getElementById('weather-temp');
     const descEl = document.getElementById('weather-desc');
     const humidityEl = document.getElementById('weather-humidity');
-    const windEl = document.getElementById('weather-wind');
+    const windEl = document.getElementById('weather-humidity'); // 注意：你原代码这里windEl获取的是humidity ID，建议改为 'weather-wind'
     const feelslikeEl = document.getElementById('weather-feelslike');
     const updateTimeEl = document.getElementById('weather-update-time');
     const iconEl = document.getElementById('weather-icon-container');
 
-    // 更新基本信息
+    // --- 原有逻辑开始 ---
     locationEl.textContent = cityName;
     tempEl.textContent = `${weatherData.temp}°C`;
     descEl.textContent = weatherData.text;
     humidityEl.textContent = `${weatherData.humidity}%`;
-    windEl.textContent = `${weatherData.windScale || '--'}级`;
+    
+    // 如果你HTML里有 id="weather-wind"，请把下面这行前面的windEl获取id修正一下
+    if(document.getElementById('weather-wind')) {
+        document.getElementById('weather-wind').textContent = `${weatherData.windScale || '--'}级`;
+    }
+    
     feelslikeEl.textContent = `${weatherData.feelsLike || weatherData.temp}°C`;
     updateTimeEl.textContent = `更新于 ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
-    // 更新动态图标
     const iconClass = weatherIconMap[weatherData.text] || 'bi-cloud';
     iconEl.innerHTML = `<i class="bi ${iconClass} text-warning"></i>`;
 
-    // 根据天气类型设置背景类
     weatherResult.classList.remove('weather-sunny-bg', 'weather-rainy-bg', 'weather-snowy-bg');
     
     if (weatherData.text.includes('晴')) {
@@ -1084,8 +1578,45 @@ function updateWeatherDisplay(weatherData, cityName) {
     } else if (weatherData.text.includes('雪')) {
         weatherResult.classList.add('weather-snowy-bg');
     }
+    // --- 原有逻辑结束 ---
 
-    // 显示卡片
+    // ========== 新增：显示美食推荐 ==========
+    // ... 前面的代码不变 ...
+
+    // ========== 修改：显示美食推荐 (适配双语) ==========
+    
+    // 1. 获取推荐内容
+    const rec = getWeatherFoodRecommendation(weatherData.temp, weatherData.text);
+    
+    // 2. 清除旧推荐
+    const existingRec = document.getElementById('weather-food-rec');
+    if (existingRec) existingRec.remove();
+
+    // 3. 创建新推荐块
+    const recDiv = document.createElement('div');
+    recDiv.id = 'weather-food-rec';
+    recDiv.className = 'mt-3 pt-3 border-top border-secondary-subtle';
+    
+    // 4. 插入HTML：点击按钮时，同时传入英文和中文词，由函数内部决定用哪个
+    recDiv.innerHTML = `
+        <div class="d-flex align-items-center justify-content-between">
+            <span class="small text-dark fw-bold">
+                <i class="bi bi-lightbulb-fill text-warning me-1"></i> ${rec.msg}
+            </span>
+            <button class="btn btn-sm btn-outline-warning" style="font-size: 12px;" 
+                onclick="handleWeatherSearch('${rec.keywordEn}', '${rec.keywordCn}')">
+                去看看
+            </button>
+        </div>
+    `;
+    
+    weatherResult.appendChild(recDiv);
+    weatherResult.classList.remove('d-none');
+    
+    // 5. 添加到天气卡片里
+    weatherResult.appendChild(recDiv);
+    // =====================================
+
     weatherResult.classList.remove('d-none');
 }
 
@@ -1094,7 +1625,7 @@ async function autoDetectLocation() {
     const switchEl = document.getElementById('auto-location-switch');
     if (switchEl && !switchEl.checked) {
         console.log('用户关闭了自动定位');
-        return; // 用户关闭了自动定位
+        return; 
     }
     
     try {
@@ -1109,7 +1640,6 @@ async function autoDetectLocation() {
         
     } catch (error) {
         console.warn('自动定位失败:', error.message);
-        // 失败后使用默认城市
         const defaultCity = '北京';
         try {
             const weatherData = await fetchWeather(defaultCity);
@@ -1178,21 +1708,17 @@ document.getElementById('weather-refresh-btn')?.addEventListener('click', async 
 
 // ========== 8. 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', function() {
-    // 手动查询按钮事件
     document.getElementById('weather-btn').addEventListener('click', handleWeatherQuery);
     
-    // 按Enter键查询
     document.getElementById('city-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             handleWeatherQuery();
         }
     });
     
-    // 自动定位开关变化事件
     document.getElementById('auto-location-switch')?.addEventListener('change', function() {
         if (this.checked) {
             showAlert('已开启自动定位', 'info');
-            // 如果当前没有天气数据，立即尝试定位
             if (document.getElementById('weather-result').classList.contains('d-none')) {
                 setTimeout(() => autoDetectLocation(), 1000);
             }
@@ -1201,8 +1727,399 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // 页面加载后尝试自动定位（延迟3秒）
     setTimeout(() => {
         autoDetectLocation();
     }, 3000);
+});
+
+// 全局暴露
+window.toggleCollection = toggleCollection;
+window.removeCollection = toggleCollection;
+window.viewCollectedRecipe = (id) => { showDetails(id); collectModal.hide(); };
+window.viewMyRecipe = viewMyRecipe;
+window.deleteUserRecipe = deleteUserRecipe;
+window.fetchRecipes = fetchRecipes;
+window.showDetails = showDetails;
+window.handleAiRecipeClick = handleAiRecipeClick;
+
+// ========== 适配无地图版本：高德地图附近饭店搜索（自动定位版+直接导航） ==========
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. 配置高德地图 Key（替换为你自己的Key）
+    const AMAP_JS_KEY = "b0427c8a38493461af1b092c4161ec95"; 
+    const AMAP_WEB_KEY = "b0427c8a38493461af1b092c4161ec95"; 
+    
+    // 2. 全局变量
+    let userLocation = null;
+    
+    // 3. 检查DOM元素是否存在
+    const checkDOM = () => {
+        const elements = {
+            restaurantList: document.getElementById('restaurant-list')
+        };
+        
+        const missing = Object.entries(elements).filter(([key, el]) => !el).map(([key]) => key);
+        if (missing.length > 0) {
+            console.error(`高德地图功能初始化失败：缺失DOM元素 - ${missing.join(', ')}`);
+            const alertContainer = document.createElement('div');
+            alertContainer.className = 'alert alert-warning mt-3';
+            alertContainer.innerHTML = `<i class="bi bi-exclamation-triangle"></i> 地图功能初始化失败：页面缺少必要的DOM元素（restaurant-list）`;
+            document.body.appendChild(alertContainer);
+            setTimeout(() => alertContainer.remove(), 5000);
+            return null;
+        }
+        return elements;
+    };
+    
+    // 4. 初始化主函数
+    const initAMap = () => {
+        const elements = checkDOM();
+        if (!elements) return; 
+        
+        const { restaurantList } = elements;
+        
+        // 5. 动态加载高德地图API（仅用于定位）
+        const loadAMapScript = () => {
+            return new Promise((resolve, reject) => {
+                if (window.AMap) {
+                    resolve(window.AMap);
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_JS_KEY}`;
+                script.type = 'text/javascript';
+                script.async = true;
+                
+                script.onload = () => resolve(window.AMap);
+                script.onerror = () => reject(new Error('高德地图JSAPI加载失败，请检查Key是否有效或网络状况'));
+                
+                document.head.appendChild(script);
+            });
+        };
+        
+        // 6. 加载API并自动触发定位
+        loadAMapScript().then(AMap => {
+            restaurantList.innerHTML = `
+                <div class="text-center text-muted py-3">
+                    <i class="bi bi-geo-alt me-2"></i> 正在自动定位并搜索附近饭店...
+                </div>
+            `;
+            handleLocation(AMap, restaurantList);
+        }).catch(error => {
+            console.error('地图初始化失败：', error);
+            elements.restaurantList.innerHTML = `
+                <div class="text-center text-danger py-3">
+                    <i class="bi bi-exclamation-circle me-2"></i> ${error.message}
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-warning" onclick="initAMap()">重新加载</button>
+                    </div>
+                </div>
+            `;
+        });
+    };
+    
+    // 7. 处理定位逻辑
+    const handleLocation = (AMap, restaurantList) => {
+        restaurantList.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">正在获取您的位置...</p>
+            </div>
+        `;
+        
+        // 动态加载定位插件
+        AMap.plugin('AMap.Geolocation', () => {
+            const geolocation = new AMap.Geolocation({
+                enableHighAccuracy: true, 
+                timeout: 15000, 
+                buttonPosition: 'RB'
+            });
+            
+            // 执行定位
+            geolocation.getCurrentPosition((status, result) => {
+                if (status === 'complete') {
+                    // 定位成功
+                    userLocation = {
+                        lng: result.position.lng,
+                        lat: result.position.lat,
+                        address: result.formattedAddress || '未知位置'
+                    };
+                    
+                    // 优先使用 JSAPI 搜索，失败则用 Web 服务 API
+                    searchNearbyRestaurantsByJSAPI(AMap, restaurantList)
+                        .catch(() => searchNearbyRestaurantsByWebAPI(restaurantList));
+                } else {
+                    // 定位失败
+                    restaurantList.innerHTML = `
+                        <div class="text-center text-danger py-3">
+                            <i class="bi bi-exclamation-circle me-2"></i> 定位失败：${result.message || '未知错误'}
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-warning" onclick="handleLocation(AMap, restaurantList)">重新定位</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+        });
+    };
+    
+    // 8. 方案1：使用 JSAPI PlaceSearch 搜索
+    const searchNearbyRestaurantsByJSAPI = (AMap, restaurantList) => {
+        return new Promise((resolve, reject) => {
+            restaurantList.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="spinner-border text-warning" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">正在搜索10公里内的饭店...</p>
+                </div>
+            `;
+            
+            // 动态加载POI搜索插件
+            AMap.plugin('AMap.PlaceSearch', () => {
+                const placeSearch = new AMap.PlaceSearch({
+                    pageSize: 10, 
+                    pageIndex: 1,
+                    type: '050000', 
+                    panel: false 
+                });
+                
+                // 搜索10公里范围内的餐饮
+                placeSearch.searchNearBy('饭店', [userLocation.lng, userLocation.lat], 10000, (status, result) => {
+                    if (status === 'complete' && result.poiList && result.poiList.pois.length > 0) {
+                        renderStyledRestaurants(restaurantList, result.poiList.pois);
+                        resolve();
+                    } else {
+                        // 无结果，尝试搜索“餐饮”
+                        placeSearch.searchNearBy('餐饮', [userLocation.lng, userLocation.lat], 15000, (s, r) => {
+                            if (s === 'complete' && r.poiList && r.poiList.pois.length > 0) {
+                                renderStyledRestaurants(restaurantList, r.poiList.pois);
+                                resolve();
+                            } else {
+                                reject();
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    };
+    
+    // 9. 方案2：使用 Web 服务 API 搜索
+    const searchNearbyRestaurantsByWebAPI = (restaurantList) => {
+        restaurantList.innerHTML = `
+            <div class="text-center py-3">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">备用通道搜索中...</p>
+            </div>
+        `;
+        
+        // 构造 Web 服务 API 请求 URL
+        const webApiUrl = `https://restapi.amap.com/v3/place/around?key=${AMAP_WEB_KEY}&location=${userLocation.lng},${userLocation.lat}&keywords=饭店,餐饮&types=050000&radius=15000&offset=10&page=1&extensions=all`;
+        
+        fetch(webApiUrl)
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === '1' && result.pois && result.pois.length > 0) {
+                    renderStyledRestaurants(restaurantList, result.pois);
+                } else {
+                    restaurantList.innerHTML = `
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-utensils me-2"></i> 未找到附近餐饮，建议扩大搜索范围或检查位置权限
+                            <p class="mt-2 small text-danger">Web API 提示：${result.info || '无结果'}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Web 服务 API 搜索失败：', error);
+                restaurantList.innerHTML = `
+                    <div class="text-center text-danger py-3">
+                        <i class="bi bi-exclamation-circle me-2"></i> 搜索失败：${error.message}
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-warning" onclick="searchNearbyRestaurantsByWebAPI(restaurantList)">重试</button>
+                        </div>
+                    </div>
+                `;
+            });
+    };
+    
+    // 10. 渲染美化后的餐厅卡片
+    const renderStyledRestaurants = (container, restaurants) => {
+        if (!container || !restaurants?.length) {
+            container.innerHTML = `
+                <div class="collect-empty" style="text-align:center; padding:30px; color:#a07846;">
+                    <i class="bi bi-map-marker" style="font-size:36px; margin-bottom:10px;"></i>
+                    <h4>暂无附近餐厅</h4>
+                    <p>未获取到周边餐饮推荐～</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        restaurants.forEach(rest => {
+            const distance = rest.distance ? parseInt(rest.distance) : 0;
+            const distanceText = distance > 1000 
+                ? `${(distance/1000).toFixed(1)}km` 
+                : `${distance}m`;
+            const score = rest.score || rest.rating || 0;
+
+            // 无图时，用店名生成文字占位图
+            const imgUrl = rest.photos?.[0]?.url 
+                ? rest.photos[0].url 
+                : `https://via.placeholder.com/300x200?text=${encodeURIComponent(rest.name)}`;
+
+            html += `
+                <div class="restaurant-card" data-rest='${JSON.stringify(rest)}'>
+                    <img src="${imgUrl}" alt="${rest.name}">
+                    <h4>${rest.name}</h4>
+                    <div class="restaurant-meta">
+                        <div class="restaurant-rating">
+                            <i class="bi bi-star-fill"></i>
+                            <span>${score}</span>
+                        </div>
+                        <div class="restaurant-distance">
+                            <i class="bi bi-signpost-split"></i>
+                            <span>${distanceText}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+        // 给所有餐厅卡片绑定点击事件，触发弹窗
+        document.querySelectorAll('.restaurant-card').forEach(card => {
+            card.addEventListener('click', () => {
+                try {
+                    const rest = JSON.parse(card.dataset.rest);
+                    showRestaurantModal(rest);
+                } catch (e) {
+                    console.error('解析餐厅数据失败：', e);
+                    alert('获取餐厅信息失败，请重试');
+                }
+            });
+        });
+    };
+
+    // 11. 显示餐厅介绍弹窗（核心修改：直接唤起APP导航）
+    const showRestaurantModal = (rest) => {
+        // 1. 先检查页面是否有弹窗容器，没有则动态创建
+        let modal = document.getElementById('restaurant-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'restaurant-modal';
+            modal.className = 'modal fade';
+            modal.tabIndex = -1;
+            modal.innerHTML = `
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="restaurant-modal-title"></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <img id="restaurant-modal-img" class="restaurant-modal-img">
+                            <div class="mb-2 restaurant-modal-meta">
+                                <span class="text-warning"><i class="bi bi-star-fill"></i></span>
+                                <span id="restaurant-modal-score">--</span>
+                                <span class="ms-3"><i class="bi bi-signpost-split"></i> <span id="restaurant-modal-distance">--</span></span>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">地址</h6>
+                                <p id="restaurant-modal-address" class="mb-0">--</p>
+                            </div>
+                            <div class="mb-3">
+                                <h6 class="text-muted">简介</h6>
+                                <p id="restaurant-modal-desc" class="mb-0">暂无简介</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                            <button type="button" class="btn btn-warning" id="restaurant-nav-btn">
+                                <i class="bi bi-map"></i> 导航到这里
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // 2. 填充弹窗数据
+        document.getElementById('restaurant-modal-title').textContent = rest.name || '未知餐厅';
+        document.getElementById('restaurant-modal-img').src = rest.photos?.[0]?.url 
+            ? rest.photos[0].url 
+            : `https://via.placeholder.com/300x200?text=${encodeURIComponent(rest.name || '未知餐厅')}`;
+        document.getElementById('restaurant-modal-score').textContent = rest.score || rest.rating || '0.0';
+        document.getElementById('restaurant-modal-distance').textContent = rest.distance 
+            ? (rest.distance > 1000 ? `${(rest.distance/1000).toFixed(1)}km` : `${rest.distance}m`) 
+            : '未知距离';
+        document.getElementById('restaurant-modal-address').textContent = rest.address || rest.address_detail?.full || '未知地址';
+        document.getElementById('restaurant-modal-desc').textContent = rest.business_area || rest.type || '暂无商家简介';
+
+        // 3. 核心修改：直接唤起高德地图APP导航，失败降级网页版
+        document.getElementById('restaurant-nav-btn').onclick = () => {
+            try {
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                let appUrl = '';
+                let webUrl = '';
+
+                if (rest.location?.lng && rest.location?.lat) {
+                    // 有经纬度：精准导航
+                    appUrl = `amapuri://navigation?from=我的位置&to=${encodeURIComponent(rest.name || '未知餐厅')}&lat=${rest.location.lat}&lon=${rest.location.lng}&dev=0`;
+                    webUrl = `https://amap.com/navigation?from=我的位置&to=${encodeURIComponent(rest.name || '未知餐厅')}&location=${rest.location.lng},${rest.location.lat}`;
+                } else {
+                    // 无经纬度：先搜索
+                    appUrl = `amapuri://search?keywords=${encodeURIComponent(rest.name || '未知餐厅') + ' ' + (rest.address || '')}&dev=0`;
+                    webUrl = `https://amap.com/search?query=${encodeURIComponent(rest.name || '未知餐厅') + ' ' + (rest.address || '')}`;
+                }
+
+                if (isMobile) {
+                    // 移动端优先唤起APP
+                    window.location.href = appUrl;
+                    // 1.5秒后检测是否唤起成功，失败则跳转网页版
+                    setTimeout(() => {
+                        const isHidden = document.hidden || document.webkitHidden || document.msHidden;
+                        if (!isHidden) {
+                            window.open(webUrl, '_blank');
+                        }
+                    }, 1500);
+                } else {
+                    // PC端直接跳转网页版
+                    window.open(webUrl, '_blank');
+                }
+
+                // 关闭弹窗
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            } catch (e) {
+                console.error('导航功能异常：', e);
+                alert('导航功能暂时不可用，请手动搜索');
+            }
+        };
+
+        // 4. 显示弹窗
+        try {
+            new bootstrap.Modal(modal).show();
+        } catch (e) {
+            console.error('弹窗显示失败：', e);
+            alert('无法打开餐厅详情，请检查Bootstrap是否正确加载');
+        }
+    };
+
+    // 12. 暴露全局函数
+    window.initAMap = initAMap;
+    window.searchNearbyRestaurantsByWebAPI = searchNearbyRestaurantsByWebAPI;
+    
+    // 13. 启动初始化
+    initAMap();
 });

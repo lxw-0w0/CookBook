@@ -1570,3 +1570,331 @@ html {
         padding: 0 5px;
     }
 }
+
+
+
+
+
+
+
+
+.weather-result-card {
+    transition: all 0.3s ease;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.weather-icon {
+    font-size: 3rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.weather-spin-icon {
+    animation: spin 1s linear infinite;
+}
+
+.weather-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.weather-info-item {
+    background: rgba(255,255,255,0.2);
+    padding: 8px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.weather-suggestion {
+    background: rgba(255,255,255,0.15);
+    border-left: 4px solid #FFB800;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+.weather-forecast {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.weather-forecast-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: rgba(255,255,255,0.9);
+}
+
+.weather-forecast-days {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.weather-forecast-day {
+    flex: 1;
+    text-align: center;
+    background: rgba(255,255,255,0.1);
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.forecast-day {
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.forecast-icon i {
+    font-size: 1.5rem;
+    margin: 5px 0;
+}
+
+.forecast-temp {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.9rem;
+}
+
+.temp-high {
+    color: #ff6b6b;
+    font-weight: bold;
+}
+
+.temp-low {
+    color: #4dabf7;
+    font-weight: bold;
+}
+
+.forecast-text {
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.weather-sunny-bg {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #333;
+}
+
+.weather-cloudy-bg {
+    background: linear-gradient(135deg, #A9A9A9, #778899);
+    color: white;
+}
+
+.weather-rainy-bg {
+    background: linear-gradient(135deg, #4682B4, #5F9EA0);
+    color: white;
+}
+
+.weather-stormy-bg {
+    background: linear-gradient(135deg, #4B0082, #483D8B);
+    color: white;
+}
+
+.weather-snowy-bg {
+    background: linear-gradient(135deg, #E6E6FA, #F0F8FF);
+    color: #333;
+}
+
+.weather-foggy-bg {
+    background: linear-gradient(135deg, #D3D3D3, #B0C4DE);
+    color: #333;
+}
+
+.weather-default-bg {
+    background: linear-gradient(135deg, #36D1DC, #5B86E5);
+    color: white;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+/* ========== 附近饭店搜索模块（餐厅列表左置+地图右置） ========== */
+#nearby-restaurant {
+    background: var(--light-yellow);
+    padding: 3rem 0;
+    border-radius: 20px;
+    margin: 2rem auto;
+    max-width: 1400px;
+    box-shadow: var(--card-shadow);
+}
+
+/* 餐厅列表（左侧） */
+#restaurant-list {
+    min-height: 400px; /* 列表高度与地图一致 */
+    max-height: 400px;
+    overflow-y: auto;
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 2px solid rgba(255, 209, 0, 0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+}
+
+/* 定位按钮（列表下方，宽度铺满） */
+#locate-btn {
+    background: var(--orange-gradient);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    box-shadow: 0 6px 15px rgba(255, 209, 0, 0.2);
+    transition: var(--transition);
+}
+#locate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 209, 0, 0.3);
+    background: linear-gradient(135deg, #FFB800 0%, #FFD100 100%);
+}
+
+/* 地图容器（右侧） */
+#map-container {
+    height: 450px; /* 地图高度略高于列表，更协调 */
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border: 2px solid rgba(255, 209, 0, 0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+    overflow: hidden;
+}
+#map-container:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(255, 209, 0, 0.15);
+}
+/* 餐厅卡片容器：排版+间距 */
+#restaurant-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px; /* 卡片之间的间距 */
+  padding: 10px 0;
+}
+
+/* 餐厅小卡片：浅黄色基调+圆角 */
+.restaurant-card {
+  width: calc(33.33% - 12px); /* 一行3个卡片（可调整） */
+  background: #fff9e6; /* 浅黄色背景 */
+  border: 1px solid #ffe082; /* 浅黄边框 */
+  border-radius: 12px; /* 圆角 */
+  padding: 12px;
+  box-shadow: 0 2px 6px rgba(255, 200, 80, 0.15); /* 柔和阴影 */
+  transition: transform 0.2s ease;
+}
+
+/* 卡片 hover 效果：轻微上浮 */
+.restaurant-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(255, 200, 80, 0.2);
+}
+
+/* 卡片内标题：加粗+换行控制 */
+.restaurant-card h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #8b5a2b; /* 棕黄色文字 */
+  margin: 0 0 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 评分+距离区域：排版 */
+.restaurant-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a07846;
+}
+
+/* 星级样式：黄色星星 */
+.restaurant-rating i {
+  color: #ffc107;
+  margin-right: 2px;
+}
+
+/* 距离样式：小图标+间距 */
+.restaurant-distance i {
+  margin-right: 2px;
+}
+
+/* 卡片内图片（若有）：圆角适配 */
+.restaurant-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+/* 左侧整体模块高透明背景（仅新增，不影响原有样式） */
+.recipe-section {
+    background-color: rgba(255, 255, 255, 0.3) !important; /* 高透明，!important 确保生效但不改动原有样式 */
+    backdrop-filter: blur(5px); /* 可选毛玻璃效果 */
+}
+/* 餐厅卡片样式 */
+.restaurant-card {
+    width: calc(33.333% - 16px);
+    box-sizing: border-box;
+    background: #fff9e6;
+    border: 1px solid #ffe082;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(255, 200, 80, 0.15);
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+.restaurant-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(255, 200, 80, 0.2);
+}
+.restaurant-card img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+.restaurant-card h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #8b5a2b;
+    margin: 0 0 8px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.restaurant-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #a07846;
+}
+.restaurant-rating i {
+    color: #ffc107;
+    margin-right: 2px;
+}
+
+/* 餐厅弹窗样式 */
+.restaurant-modal-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.restaurant-modal-meta {
+    color: #a07846;
+}
+
