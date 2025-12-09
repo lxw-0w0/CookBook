@@ -1,17 +1,14 @@
-// ========== 1. 核心配置与词典 ==========
+// ========== 核心配置与词典 ==========
 const DEEPSEEK_KEY = "sk-0188270c22224ddda38db93e589937dd";
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const RECIPE_API = "https://www.themealdb.com/api/json/v1/1/";
-// ========== BMI配置 ==========
+
+// ========== 天行数据配置 (BMI 和 中文食谱共用) ==========
+const TIAN_KEY = "bec01a55dc51195668cdec1ea3f12046"; // 你的新 Key
 const BMI_API = "https://apis.tianapi.com/bmi/index";
-const TIAN_KEY = "bec01a55dc51195668cdec1ea3f12046"; 
-// [新增] 聚合数据配置，用于中国食谱
-const JUHE_KEY = "502e3e1e146863da322d85d4441f2129"; // 你的 Key
-const JUHE_API_URL = "http://apis.juhe.cn/fapigx/caipu/query"; // 聚合接口地址
-let currentSource = 'global'; // 当前数据源状态：'global' 或 'chinese'
+const TIAN_RECIPE_API = "https://apis.tianapi.com/caipu/index"; // 新增菜谱接口
 
-
-
+let currentSource = 'global'; // 当前数据源状态
 
 // 扩充词典 (用于辅助翻译)
 const DICTIONARY = {
@@ -51,7 +48,7 @@ const pinyinUtil = {
 };
 
 
-// [新增] 切换数据源逻辑
+// 切换数据源逻辑
 function switchSource(source) {
     currentSource = source;
     const input = document.getElementById('search-input');
@@ -71,7 +68,7 @@ function switchSource(source) {
     }
     
     // 提示用户
-    showAlert(`已切换到：${source === 'global' ? '全球食谱 (需翻译)' : '中式精选 (聚合数据)'}`, 'success');
+    showAlert(`已切换到：${source === 'global' ? '全球食谱' : '中式精选 '}`, 'success');
 }
 
 
@@ -217,8 +214,6 @@ function localFallbackTranslate(text) {
     return result;
 }
 
-// [已删除] formatMeasure, fallbackTranslate, formatMeasureSimple 
-// 这些都是旧的翻译函数，现在已经被 translateText 和 localFallbackTranslate 取代了。
 
 function cleanMarkdown(text) {
     if (!text) return "";
@@ -377,53 +372,85 @@ function deleteUserRecipe(id) {
 }
 
 // ========== 5. 收藏功能 ==========
+// ========== 收藏功能 (已修复图标变色与中式免翻译) ==========
 async function toggleCollection(btn, item) {
     const data = getUserData();
+    // 1. 登录检查
     if (!data.currentUser) { 
         new bootstrap.Modal(document.getElementById('loginModal')).show(); 
         return; 
     }
     
     const user = data.users.find(u => u.username === data.currentUser);
+    // 注意：这里兼容了普通ID和带前缀的ID (cn_xxxx)
     const idx = user.collections.findIndex(c => c.idMeal === item.idMeal);
     
+    // 获取按钮内部的图标元素，用于切换颜色
+    const icon = btn.querySelector('i');
+    
     if (idx > -1) { 
-        // 取消收藏
+        // === 取消收藏 ===
         user.collections.splice(idx, 1); 
+        
+        // 样式切换：移除激活状态，变回灰色
         btn.classList.remove('active'); 
+        if(icon) {
+            icon.classList.remove('text-danger'); // 移除红色
+            icon.classList.add('text-muted');     // 变回灰色
+        }
+        
         showAlert('已取消收藏'); 
     } else { 
-        // 添加收藏，同时获取中文翻译
+        // === 添加收藏 ===
         try {
-            // 获取中文翻译
-            const translatedTitle = await translateText(item.strMeal);
+            let translatedTitle = item.strMeal;
+
+            // 逻辑优化：只有非中式食谱（且没有现有中文名）才调用翻译 API
+            // 如果是天行数据(source='tian')，本身就是中文，无需翻译
+            if (item.source !== 'tian' && !item.strMealCN) {
+                translatedTitle = await translateText(item.strMeal);
+            }
             
-            // 创建带有中文翻译的收藏项
+            // 创建收藏项
             const collectionItem = {
                 ...item,
-                strMealCN: translatedTitle || item.strMeal // 保存中文标题
+                strMealCN: translatedTitle || item.strMeal // 优先使用翻译名或原名
             };
             
             user.collections.push(collectionItem); 
+            
+            // 样式切换：添加激活状态，变为红色
             btn.classList.add('active'); 
+            if(icon) {
+                icon.classList.remove('text-muted');  // 移除灰色
+                icon.classList.add('text-danger');    // 变为红色
+            }
+            
             showAlert('收藏成功'); 
         } catch (error) {
-            console.error("翻译失败，保存英文标题:", error);
-            // 如果翻译失败，至少保存英文标题
-            const collectionItem = {
-                ...item,
-                strMealCN: item.strMeal
-            };
+            console.error("处理收藏失败:", error);
+            // 降级处理：直接保存
+            const collectionItem = { ...item, strMealCN: item.strMeal };
             user.collections.push(collectionItem); 
+            
             btn.classList.add('active'); 
-            showAlert('收藏成功 (使用英文标题)'); 
+            if(icon) {
+                icon.classList.remove('text-muted');
+                icon.classList.add('text-danger');
+            }
+            showAlert('收藏成功'); 
         }
     }
     
+    // 保存并刷新列表
     saveUserData(data); 
-    renderCollectList();
+    // 如果当前打开了收藏列表模态框，实时刷新它
+    if(document.getElementById('collectModal').classList.contains('show')) {
+        renderCollectList();
+    }
 }
 
+// 渲染收藏列表 (已适配中式文字封面)
 function renderCollectList() {
     const data = getUserData();
     const list = document.getElementById('collectList');
@@ -440,37 +467,63 @@ function renderCollectList() {
         return;
     }
     
-    // 直接渲染，因为收藏时已经保存了中文标题
-    renderWithTranslations(user.collections);
+    list.innerHTML = '<div class="collect-list"></div>';
+    const container = list.querySelector('.collect-list');
     
-    function renderWithTranslations(collections) {
-        list.innerHTML = '<div class="collect-list"></div>';
-        const container = list.querySelector('.collect-list');
+    user.collections.forEach((item) => {
+        let displayTitle = item.strMealCN || item.strMeal;
+        displayTitle = displayTitle.replace(/^\|/, '').trim();
+        if (displayTitle.length > 25) displayTitle = displayTitle.substring(0, 25) + '...';
         
-        collections.forEach((item) => {
-            // 优先使用保存的中文标题，如果没有则用英文标题
-            let displayTitle = item.strMealCN || item.strMeal;
-            displayTitle = displayTitle.replace(/^\|/, '').trim();
+        // --- 核心逻辑：区分图片显示 ---
+        let imgHtml = '';
+        let clickAction = '';
+
+        if (item.source === 'tian') {
+            // [中式] 生成文字封面 (复用配色逻辑)
+            const colorThemes = [
+                { bg: '#ff9a8b', text: '#ffffff' }, { bg: '#4facfe', text: '#ffffff' },
+                { bg: '#00cdac', text: '#ffffff' }, { bg: '#ff6b6b', text: '#ffffff' },
+                { bg: '#a8edea', text: '#333333' }, { bg: '#f6d365', text: '#333333' }
+            ];
+            let hash = 0;
+            const name = item.strMeal; // 使用保存的菜名
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            const theme = colorThemes[Math.abs(hash) % colorThemes.length];
             
-            // 截断过长的标题
-            if (displayTitle.length > 25) {
-                displayTitle = displayTitle.substring(0, 25) + '...';
-            }
-            
-            const div = document.createElement('div');
-            div.className = 'collect-item'; 
-            div.innerHTML = `
-                <img src="${item.strMealThumb}" class="collect-item-img">
-                <div class="collect-item-info">
-                    <h5 class="collect-item-title" title="${item.strMealCN || item.strMeal}">${displayTitle}</h5>
-                    <div class="collect-item-actions">
-                        <button class="collect-item-btn btn-view" onclick="viewCollectedRecipe('${item.idMeal}')"><i class="bi bi-eye"></i> 详情</button>
-                        <button class="collect-item-btn btn-remove" onclick="toggleCollection(this, {idMeal:'${item.idMeal}'})"><i class="bi bi-trash"></i> 删除</button>
-                    </div>
+            // 渲染一个小一点的文字方块
+            imgHtml = `
+                <div class="collect-item-img d-flex align-items-center justify-content-center" 
+                     style="background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}80 100%); color: ${theme.text}; font-weight: bold; font-size: 1.5rem;">
+                    ${name.charAt(0)}
                 </div>`;
-            container.appendChild(div);
-        });
-    }
+            
+            // 点击详情时，调用专门的中式查看函数
+            clickAction = `viewCollectedTianRecipe('${item.idMeal}')`;
+            
+        } else {
+            // [全球] 正常显示图片
+            imgHtml = `<img src="${item.strMealThumb}" class="collect-item-img">`;
+            clickAction = `viewCollectedRecipe('${item.idMeal}')`;
+        }
+        // ---------------------------
+
+        const div = document.createElement('div');
+        div.className = 'collect-item'; 
+        div.innerHTML = `
+            ${imgHtml}
+            <div class="collect-item-info">
+                <h5 class="collect-item-title" title="${item.strMealCN || item.strMeal}">
+                    ${item.source === 'tian' ? '<span class="badge bg-warning text-dark me-1" style="font-size:0.6rem">中</span>' : ''}
+                    ${displayTitle}
+                </h5>
+                <div class="collect-item-actions">
+                    <button class="collect-item-btn btn-view" onclick="${clickAction}"><i class="bi bi-eye"></i> 详情</button>
+                    <button class="collect-item-btn btn-remove" onclick="toggleCollection(this, {idMeal:'${item.idMeal}'})"><i class="bi bi-trash"></i> 删除</button>
+                </div>
+            </div>`;
+        container.appendChild(div);
+    });
 }
 
 function isRecipeCollected(id) {
@@ -484,6 +537,7 @@ function isRecipeCollected(id) {
 
 // 总搜索入口（分流器），因为现在新增了中国食谱
 async function fetchRecipes(query) {
+
     // 1. 获取搜索词（如果未传参，则获取输入框的值）
     const searchQuery = query || document.getElementById('search-input').value.trim();
     if (!searchQuery) return;
@@ -493,14 +547,14 @@ async function fetchRecipes(query) {
     recipeContainer.innerHTML = `<div class="col-12 text-center py-5"><div class="spinner-border text-warning" style="width: 3rem; height: 3rem;"></div><p class="mt-3 text-muted">${loadingText}</p></div>`;
     
     // 3. 根据当前源，决定调用哪个函数
-    if (currentSource === 'chinese') {
-        await fetchJuheRecipes(searchQuery); // 调用下面将要写的新函数
+    if (currentSource === 'chinese') { 
+        await fetchTianRecipes(searchQuery);  //天行函数
     } else {
-        await fetchGlobalRecipes(searchQuery); // 调用你刚才改名的旧函数
+        await fetchGlobalRecipes(searchQuery); // 调用刚才改名的旧函数
     }
 }
 
-// [新增] 处理天气推荐点击
+// 处理天气推荐点击，因为天气不同推荐的食物不同，点击这里可以直接搜索推荐食物
 function handleWeatherSearch(enWord, cnWord) {
     // 根据当前选中的源，决定搜哪个词
     const query = currentSource === 'global' ? enWord : cnWord;
@@ -716,6 +770,19 @@ window.showDetails = async function(id) {
 };
 
 function displayRecipeDetail(recipeData) {
+    // 确保图片容器显示
+    const imgContainer = modalImg.parentElement;
+    imgContainer.style.display = 'block';
+    
+    // 清除可能存在的文字图片（从上一个中式菜谱遗留下来的）
+    const existingTextImage = imgContainer.querySelector('.text-image-container');
+    if (existingTextImage) {
+        existingTextImage.remove();
+    }
+    
+    // 确保img标签显示
+    modalImg.style.display = 'block';
+    
     modalTitle.innerText = recipeData.title;
     
     modalImg.src = recipeData.image;
@@ -748,6 +815,7 @@ function displayRecipeDetail(recipeData) {
     modalInstructions.innerHTML = instructionsHtml;
 }
 
+
 // ========== 7. 页面初始化 ==========
 function handleAiRecipeClick() {
     const aiSection = document.getElementById('ai-robot-section');
@@ -766,316 +834,263 @@ function loadChatHistory() {
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// [新增] 聚合数据中式搜索
-async function fetchJuheRecipes(query) {
+//处理中文食谱
+
+// ========== [核心修改] 天行数据中式搜索 ==========
+async function fetchTianRecipes(query) {
     try {
-        console.log(`正在请求聚合数据: ${query}`);
-        // 组装请求 URL
-        const url = `${JUHE_API_URL}?key=${JUHE_KEY}&word=${encodeURIComponent(query)}&num=12`;
+        console.log(`正在请求天行数据: ${query}`);
+        // 组装请求 URL (注意参数 num=12 控制返回数量)
+        const url = `${TIAN_RECIPE_API}?key=${TIAN_KEY}&word=${encodeURIComponent(query)}&num=12`;
         
+        // 天行数据支持 CORS，可以直接 fetch，无需代理插件
         const response = await fetch(url);
         const data = await response.json();
 
-        console.log("聚合数据返回:", data);
+        console.log("天行数据返回:", data);
 
-        if (data.error_code === 0 && data.result && data.result.list) {
-            displayJuheRecipes(data.result.list);
+        if (data.code === 200 && data.result && data.result.list) {
+            displayTianRecipes(data.result.list);
         } else {
             // 错误处理
-            let errorMsg = data.reason || '未找到相关菜谱';
-            if(data.error_code === 10012) errorMsg = "接口请求超过次数限制 (每日100次)";
+            let errorMsg = data.msg || '未找到相关菜谱';
+            if(data.code === 250) errorMsg = "数据返回为空 (换个词试试)";
             
             recipeContainer.innerHTML = `
                 <div class="col-12 text-center py-5">
                     <h4>未找到 "${query}"</h4>
                     <p class="text-muted">${errorMsg}</p>
-                    <button class="btn btn-sm btn-outline-warning mt-2" onclick="fetchJuheRecipes('红烧肉')">试试搜：红烧肉</button>
+                    <button class="btn btn-sm btn-outline-warning mt-2" onclick="fetchTianRecipes('红烧肉')">试试搜：红烧肉</button>
+                    <button class="btn btn-sm btn-outline-warning mt-2" onclick="fetchTianRecipes('土豆')">试试搜：土豆</button>
                 </div>`;
         }
     } catch (error) {
         console.error("中式搜索出错:", error);
         recipeContainer.innerHTML = `
             <div class="col-12 text-center py-5">
-                <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
-                <h5 class="mt-3">请求被拦截 (跨域问题)</h5>
-                <p class="text-muted text-start d-inline-block mt-2">
-                    聚合数据 API 不支持浏览器直接调用。<br>
-                    <strong>解决方法：</strong><br>
-                    1. 请安装 Chrome 插件: <span class="text-warning">Allow CORS: Access-Control-Allow-Origin</span><br>
-                    2. 安装后点击插件图标激活 (图标变彩色)<br>
-                    3. 重新点击搜索
-                </p>
+                <i class="bi bi-wifi-off text-danger fs-1"></i>
+                <h5 class="mt-3">网络请求失败</h5>
+                <p class="text-muted">${error.message}</p>
             </div>`;
     }
 }
 
-
-//无图片 
-function displayJuheRecipes(list) {
+// 渲染天行数据列表
+// 渲染天行数据列表 (已添加收藏功能)
+function displayTianRecipes(list) {
     recipeContainer.innerHTML = "";
     list.forEach(item => {
-        // 1. 使用纯CSS文字图片，不依赖外部图片
-        // 生成一个包含菜名的文字卡片，有漂亮的背景色
-        const generateTextImageHTML = (name) => {
-            // 取菜名第一个字符作为大图标
+        // 1. 生成纯CSS文字图片
+        const generateTextImageHTML = (name, type) => {
             const firstChar = name.charAt(0);
-            
-            // 为不同菜系生成不同颜色的背景
             const colorThemes = [
-                { bg: '#ff9a8b', text: '#ffffff' }, // 橙色系
-                { bg: '#4facfe', text: '#ffffff' }, // 蓝色系
-                { bg: '#00cdac', text: '#ffffff' }, // 绿色系
-                { bg: '#ff6b6b', text: '#ffffff' }, // 红色系
-                { bg: '#a8edea', text: '#333333' }, // 浅蓝系
-                { bg: '#fed6e3', text: '#333333' }, // 粉色系
-                { bg: '#d299c2', text: '#ffffff' }, // 紫色系
-                { bg: '#f6d365', text: '#333333' }, // 黄色系
+                { bg: '#ff9a8b', text: '#ffffff' }, { bg: '#4facfe', text: '#ffffff' },
+                { bg: '#00cdac', text: '#ffffff' }, { bg: '#ff6b6b', text: '#ffffff' },
+                { bg: '#a8edea', text: '#333333' }, { bg: '#f6d365', text: '#333333' }
             ];
-            
-            // 根据菜名哈希选择颜色主题
             let hash = 0;
-            for (let i = 0; i < name.length; i++) {
-                hash = name.charCodeAt(i) + ((hash << 5) - hash);
-            }
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
             const theme = colorThemes[Math.abs(hash) % colorThemes.length];
             
             return `
                 <div class="text-image-container" style="
                     height: 180px; 
                     background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}80 100%);
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    color: ${theme.text};
-                    border-radius: 8px 8px 0 0;
-                    overflow: hidden;
-                    position: relative;
+                    display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    color: ${theme.text}; border-radius: 8px 8px 0 0; position: relative;
                 ">
-                    <div class="text-image-char" style="
-                        font-size: 4rem;
-                        font-weight: 900;
-                        opacity: 0.8;
-                        margin-bottom: 10px;
-                    ">${firstChar}</div>
-                    <div class="text-image-name" style="
-                        font-size: 1.2rem;
-                        font-weight: 700;
-                        text-align: center;
-                        padding: 0 10px;
-                        max-width: 100%;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    ">${name}</div>
-                    <div class="text-image-subtitle" style="
-                        font-size: 0.9rem;
-                        opacity: 0.9;
-                        margin-top: 5px;
-                        font-weight: 500;
-                    ">${item.type_name || '美味佳肴'}</div>
+                    <div style="font-size: 4rem; font-weight: 900; opacity: 0.8; margin-bottom: 10px;">${firstChar}</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; text-align: center; padding: 0 10px;">${name}</div>
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">${type || '中式家常'}</div>
                 </div>
             `;
         };
         
-        // 2. 处理食材：聚合数据返回的是字符串 "黄瓜300克；海米10克"
         let ingredientsArr = [];
-        if (item.yuanliao) {
-            ingredientsArr = item.yuanliao.split(/；|;/).filter(i => i.trim());
-        }
-        if (item.tiaoliao) {
-            const tiaoliaoArr = item.tiaoliao.split(/；|;/).filter(i => i.trim());
-            ingredientsArr = ingredientsArr.concat(tiaoliaoArr);
-        }
+        if (item.yuanliao) ingredientsArr = ingredientsArr.concat(item.yuanliao.split(/；|;/).filter(i => i.trim()));
+        if (item.tiaoliao) ingredientsArr = ingredientsArr.concat(item.tiaoliao.split(/；|;/).filter(i => i.trim()));
         
-        // 3. 存入缓存
+        // 缓存数据 (保持不变)
+        let formattedSteps = item.zuofa || "暂无步骤描述";
+        formattedSteps = formattedSteps.replace(/(\d+\.)/g, '<br><br><strong>$1</strong>');
+        if(formattedSteps.startsWith('<br><br>')) formattedSteps = formattedSteps.substring(8); 
+
         recipeCache.set(item.id, {
             id: item.id,
             title: item.cp_name,
-            image: null, // 标记为无图片
+            image: null,
             ingredients: ingredientsArr,
-            instructions: (item.zuofa || "暂无步骤描述").replace(/(\d+\.)/g, "<br>$1"),
-            tags: item.type_name || "中式菜肴",
-            desc: item.texing || item.tishi || "",
-            hasImage: false // 标记是否有真实图片
+            instructions: formattedSteps,
+            tags: item.type_name,
+            desc: item.texing || item.tishi || item.cp_name,
+            hasImage: false
         });
+
+        // 🆕 收藏功能核心逻辑
+        // 构造一个唯一ID，加前缀防止和全球食谱冲突
+        const uniqueId = 'cn_' + item.id;
+        const isCollected = isRecipeCollected(uniqueId);
+
+        // 构造要保存到收藏夹的对象 (保存所有必要字段，以免详情页打不开)
+        const saveItem = {
+            idMeal: uniqueId,     // 必须字段：用于查找
+            strMeal: item.cp_name, // 必须字段：用于显示标题
+            source: 'tian',        // 标记来源
+            // 保存详情页所需的所有原始数据
+            id: item.id,
+            cp_name: item.cp_name,
+            type_name: item.type_name,
+            yuanliao: item.yuanliao,
+            tiaoliao: item.tiaoliao,
+            zuofa: item.zuofa,
+            texing: item.texing,
+            tishi: item.tishi
+        };
 
         const col = document.createElement("div");
         col.className = "col";
         col.innerHTML = `
-            <div class="card h-100" onclick="showJuheDetails('${item.id}')">
-                <div class="position-absolute top-0 end-0 p-2">
-                    <span class="badge bg-danger shadow">中式精选</span>
+            <div class="card h-100 shadow-sm border-0" onclick="showTianDetails('${item.id}')" style="cursor: pointer; transition: transform 0.2s;">
+                <div class="position-absolute top-0 end-0 p-2 z-2 d-flex gap-2 align-items-center">
+                    <span class="badge bg-warning text-dark shadow-sm">中式精选</span>
+                    <button class="btn btn-light shadow-sm rounded-circle p-0 d-flex align-items-center justify-content-center ${isCollected ? 'active' : ''}" 
+                            style="width: 32px; height: 32px; border: none;"
+                            onclick="event.stopPropagation(); toggleCollection(this, ${JSON.stringify(saveItem).replace(/"/g, '&quot;')})">
+                        <i class="bi bi-bookmark-heart ${isCollected ? 'text-danger' : 'text-muted'}" style="font-size: 1.1rem;"></i>
+                    </button>
                 </div>
                 
-                <!-- 文字图片区域 -->
-                ${generateTextImageHTML(item.cp_name)}
+                ${generateTextImageHTML(item.cp_name, item.type_name)}
                 
                 <div class="card-body">
-                    <h5 class="card-title text-truncate" title="${item.cp_name}">${item.cp_name}</h5>
-                    
-                    <div class="card-meta d-flex justify-content-between align-items-center mb-2">
-                        <div class="card-rating text-warning">
-                            <i class="bi bi-star-fill"></i> 
-                            <span>${(Math.random() * 0.5 + 4.5).toFixed(1)}</span>
-                        </div>
-                        <div class="card-time text-muted small">
-                            <i class="bi bi-tags me-1"></i>
-                            <span>${item.type_name || '家常菜'}</span>
-                        </div>
-                    </div>
-                    
-                    <p class="card-text small text-muted mt-2" style="
-                        display: -webkit-box;
-                        -webkit-line-clamp: 2;
-                        -webkit-box-orient: vertical;
-                        overflow: hidden;
-                        line-height: 1.4;
-                        height: 2.8em;
-                    ">
-                        ${item.texing || item.tishi || '暂无描述'}
+                    <h5 class="card-title text-truncate">${item.cp_name}</h5>
+                    <p class="card-text small text-muted" style="height: 3em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                        ${item.texing || item.tishi || '暂无详细介绍，点击查看做法。'}
                     </p>
-                    
-                    <!-- 食材预览 -->
-                    <div class="ingredients-preview mt-2">
-                        <span class="badge bg-light text-dark me-1 mb-1">
-                            <i class="bi bi-egg-fried me-1"></i> ${ingredientsArr.length}种食材
-                        </span>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <small class="text-muted"><i class="bi bi-ui-checks"></i> ${ingredientsArr.length} 种食材</small>
+                        <button class="btn btn-sm btn-outline-warning rounded-pill">查看做法</button>
                     </div>
                 </div>
             </div>`;
+        
+        col.querySelector('.card').addEventListener('mouseenter', function() { this.style.transform = 'translateY(-5px)'; });
+        col.querySelector('.card').addEventListener('mouseleave', function() { this.style.transform = 'translateY(0)'; });
+        
+        // 修正 toggleCollection 按钮点击后的样式切换逻辑
+        // 我们需要在 CSS 中增加 .active 类的样式，或者在这里手动切换图标颜色
+        // 为了简单，我们依赖 HTML 重绘，或者让 toggleCollection 函数稍微改动一下（见下文说明）
+        
         recipeContainer.appendChild(col);
     });
 }
-
-// 同时需要修改 showJuheDetails 函数来处理文字图片
-function showJuheDetails(id) {
+// 显示天行数据详情 (修复了详情页内容不显示的问题)
+// 显示天行数据详情 (已修复：不再清空下方内容)
+function showTianDetails(id) {
     const recipe = recipeCache.get(id); 
-    if(!recipe) return;
+    if(!recipe) {
+        console.error("未找到缓存菜谱:", id);
+        return;
+    }
 
+    console.log("打开详情页:", recipe);
+    
+    // 1. 设置标题
     modalTitle.innerText = recipe.title;
     
-    // 如果无真实图片，显示文字图片
-    if (!recipe.hasImage) {
-        // 创建文字图片
-        const firstChar = recipe.title.charAt(0);
-        const colorThemes = [
-            { bg: '#ff9a8b', text: '#ffffff' },
-            { bg: '#4facfe', text: '#ffffff' },
-            { bg: '#00cdac', text: '#ffffff' },
-            { bg: '#ff6b6b', text: '#ffffff' },
-        ];
-        let hash = 0;
-        for (let i = 0; i < recipe.title.length; i++) {
-            hash = recipe.title.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const theme = colorThemes[Math.abs(hash) % colorThemes.length];
-        
-        modalImg.src = ''; // 清除图片源
-        modalImg.style.display = 'none'; // 隐藏img标签
-        
-        // 在modal-img的位置插入文字图片
-        const textImageHTML = `
-            <div style="
-                width: 100%;
-                height: 300px;
-                background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}80 100%);
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                color: ${theme.text};
-                border-radius: 8px;
-                margin-bottom: 20px;
-            ">
-                <div style="
-                    font-size: 6rem;
-                    font-weight: 900;
-                    opacity: 0.8;
-                    margin-bottom: 20px;
-                ">${firstChar}</div>
-                <div style="
-                    font-size: 2rem;
-                    font-weight: 700;
-                    text-align: center;
-                    padding: 0 20px;
-                ">${recipe.title}</div>
-                <div style="
-                    font-size: 1.2rem;
-                    opacity: 0.9;
-                    margin-top: 10px;
-                    font-weight: 500;
-                ">${recipe.tags || '中式美味'}</div>
+    // 2. 处理顶部大图 (核心修复部分)
+    // 先隐藏真实的img标签，因为我们没有图片URL
+    modalImg.style.display = 'none';
+    
+    // 检查是否已经插入过文字图片容器，如果有先移除，防止重复堆叠
+    const existingTextImage = modalImg.parentElement.querySelector('.text-image-container');
+    if (existingTextImage) {
+        existingTextImage.remove();
+    }
+
+    // 生成颜色主题
+    let hash = 0;
+    for (let i = 0; i < recipe.title.length; i++) hash = recipe.title.charCodeAt(i) + ((hash << 5) - hash);
+    const colorThemes = [
+        { bg: '#ff9a8b', text: '#ffffff' }, { bg: '#4facfe', text: '#ffffff' },
+        { bg: '#00cdac', text: '#ffffff' }, { bg: '#ff6b6b', text: '#ffffff' },
+        { bg: '#a8edea', text: '#333333' }, { bg: '#f6d365', text: '#333333' }
+    ];
+    const theme = colorThemes[Math.abs(hash) % colorThemes.length];
+
+    // 创建文字图片的 HTML 字符串
+    const textImageHTML = `
+        <div class="text-image-container w-100 d-flex flex-column align-items-center justify-content-center mb-4" 
+             style="height: 260px; background: linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg}90 100%); color: ${theme.text}; border-radius: 8px;">
+            <i class="bi bi-egg-fried" style="font-size: 4rem; opacity: 0.5; margin-bottom: 15px;"></i>
+            <h2 style="font-weight: bold; margin-bottom: 10px;">${recipe.title}</h2>
+            <span class="badge bg-light text-dark opacity-75">${recipe.tags || '中式美味'}</span>
+        </div>
+    `;
+
+    // 将文字图片插入到 modalImg 之后 (这样不会覆盖下面的食材列表)
+    modalImg.insertAdjacentHTML('afterend', textImageHTML);
+
+    // 3. 渲染食材列表
+    let ingredientsHtml = "";
+    if (recipe.ingredients && recipe.ingredients.length > 0) {
+        recipe.ingredients.forEach(ing => {
+            // 简单清洗一下数据，去掉可能的空行
+            if(ing && ing.trim()) {
+                ingredientsHtml += `
+                    <li class="col-6 mb-2">
+                        <div class="p-2 bg-light rounded d-flex align-items-center">
+                            <i class="bi bi-check-circle-fill text-warning me-2 small"></i>
+                            <span class="text-dark">${ing.trim()}</span>
+                        </div>
+                    </li>`;
+            }
+        });
+        // 包装在 row 里以实现两列布局
+        ingredientsHtml = `<div class="row">${ingredientsHtml}</div>`;
+    } else {
+        ingredientsHtml = `<div class="alert alert-secondary">暂无详细食材列表</div>`;
+    }
+    
+    // 添加 "特色/提示" 到食材上方
+    if (recipe.desc) {
+        ingredientsHtml = `
+            <div class="alert alert-warning border-0 bg-warning-subtle mb-3">
+                <i class="bi bi-lightbulb-fill text-warning me-2"></i>
+                <strong>大厨提示：</strong>${recipe.desc}
+            </div>
+            ${ingredientsHtml}
+        `;
+    }
+    
+    // 确保 modalIngredients 元素存在并更新
+    if(modalIngredients) {
+        modalIngredients.innerHTML = ingredientsHtml;
+    } else {
+        console.error("找不到 modal-ingredients 元素");
+    }
+
+    // 4. 渲染烹饪步骤
+    // 确保 modalInstructions 元素存在并更新
+    if(modalInstructions) {
+        modalInstructions.innerHTML = `
+            <div class="instruction-content" style="line-height: 1.8; color: #444; font-size: 1.05rem;">
+                ${recipe.instructions || "暂无步骤描述"}
             </div>
         `;
-        
-        // 将文字图片插入到modal-img的位置
-        const imgContainer = modalImg.parentElement;
-        imgContainer.insertAdjacentHTML('beforeend', textImageHTML);
-        modalImg.style.display = 'none';
     } else {
-        // 有真实图片，正常显示
-        modalImg.src = recipe.image;
-        modalImg.style.display = 'block';
-    }
-    
-    // 渲染食材列表
-    let ingredientsHtml = "";
-    if (recipe.ingredients && recipe.ingredients.length > 0) {
-        recipe.ingredients.forEach(ing => {
-            ingredientsHtml += `<li class="d-flex justify-content-between py-2 border-bottom border-light">
-                <span><i class="bi bi-dot text-warning"></i> ${ing}</span>
-            </li>`;
-        });
-    } else {
-        ingredientsHtml = "<li>暂无详细食材</li>";
-    }
-    
-    // 如果有特色描述，加在最前面
-    if (recipe.desc) {
-        ingredientsHtml = `<li class="py-2 bg-light px-2 rounded mb-2 text-muted small"><i class="bi bi-info-circle"></i> ${recipe.desc}</li>` + ingredientsHtml;
+        console.error("找不到 modal-instructions 元素");
     }
 
-    modalIngredients.innerHTML = ingredientsHtml;
-    
-    // 渲染步骤
-    modalInstructions.innerHTML = recipe.instructions;
-    
+    // 5. 显示模态框
     recipeModal.show();
 }
 
 
-function showJuheDetails(id) {
-    const recipe = recipeCache.get(id); 
-    if(!recipe) return;
 
-    modalTitle.innerText = recipe.title;
-    modalImg.src = recipe.image;
-    
-    // 渲染食材列表
-    let ingredientsHtml = "";
-    if (recipe.ingredients && recipe.ingredients.length > 0) {
-        recipe.ingredients.forEach(ing => {
-            ingredientsHtml += `<li class="d-flex justify-content-between py-2 border-bottom border-light">
-                <span><i class="bi bi-dot text-warning"></i> ${ing}</span>
-            </li>`;
-        });
-    } else {
-        ingredientsHtml = "<li>暂无详细食材</li>";
-    }
-    
-    // 如果有特色描述，加在最前面
-    if (recipe.desc) {
-        ingredientsHtml = `<li class="py-2 bg-light px-2 rounded mb-2 text-muted small"><i class="bi bi-info-circle"></i> ${recipe.desc}</li>` + ingredientsHtml;
-    }
 
-    modalIngredients.innerHTML = ingredientsHtml;
-    
-    // 渲染步骤
-    modalInstructions.innerHTML = recipe.instructions;
-    
-    recipeModal.show();
-}
+
+
 
 document.addEventListener('DOMContentLoaded', () => {
     searchInput = document.getElementById("search-input");
@@ -1147,9 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     //bmi接入api
-//bmi接入api - 替换这个部分
-//bmi接入api - 最终正确版本
-// ========== BMI计算函数 (已修正) ==========
+// ========== BMI计算函数 =========
 bmiBtn.addEventListener('click', async () => {
     const height = parseFloat(bmiHeight.value);
     const weight = parseFloat(bmiWeight.value);
@@ -2123,3 +2136,46 @@ document.addEventListener('DOMContentLoaded', function() {
     // 13. 启动初始化
     initAMap();
 });
+
+
+// ========== [新增] 中式收藏详情查看 ==========
+window.viewCollectedTianRecipe = function(collectionId) {
+    const data = getUserData();
+    const user = data.users.find(u => u.username === data.currentUser);
+    const item = user.collections.find(c => c.idMeal === collectionId);
+    
+    if (!item) return;
+
+    // 提取原始ID (去掉 cn_ 前缀)
+    const originalId = item.id; // 在保存时我们存了原始id
+
+    // 重新构建缓存格式 (模拟 displayTianRecipes 的逻辑)
+    // 这样 showTianDetails 就能直接读取了
+    let ingredientsArr = [];
+    if (item.yuanliao) ingredientsArr = ingredientsArr.concat(item.yuanliao.split(/；|;/).filter(i => i.trim()));
+    if (item.tiaoliao) ingredientsArr = ingredientsArr.concat(item.tiaoliao.split(/；|;/).filter(i => i.trim()));
+    
+    let formattedSteps = item.zuofa || "暂无步骤描述";
+    // 如果还没格式化过（没有HTML标签），则进行格式化
+    if (!formattedSteps.includes('<br>')) {
+        formattedSteps = formattedSteps.replace(/(\d+\.)/g, '<br><br><strong>$1</strong>');
+        if(formattedSteps.startsWith('<br><br>')) formattedSteps = formattedSteps.substring(8);
+    }
+
+    // 写入缓存
+    recipeCache.set(originalId, {
+        id: originalId,
+        title: item.cp_name,
+        image: null,
+        ingredients: ingredientsArr,
+        instructions: formattedSteps,
+        tags: item.type_name,
+        desc: item.texing || item.tishi,
+        hasImage: false
+    });
+
+    // 打开详情页
+    // 需要先关闭收藏模态框，否则双重模态框体验不好
+    collectModal.hide();
+    showTianDetails(originalId);
+};
